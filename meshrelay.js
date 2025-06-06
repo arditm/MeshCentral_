@@ -59,7 +59,10 @@ function checkDeviceSharePublicIdentifier(parent, domain, nodeid, pid, extraKey,
         // Search for the device share public identifier
         var found = false;
         for (var i = 0; i < docs.length; i++) {
-            for (var i = 0; i < docs.length; i++) { if ((docs[i].publicid == pid) && ((docs[i].extrakey == null) || (docs[i].extrakey === extraKey))) { found = true; } }
+            if ((docs[i].publicid == pid) && ((docs[i].extrakey == null) || (docs[i].extrakey === extraKey))) {
+                found = true;
+                break;
+            }
         }
         func(found);
     });
