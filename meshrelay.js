@@ -42,6 +42,9 @@ const MESHRIGHT_ADMIN               = 0xFFFFFFFF;
 // 1 = Terminal
 // 2 = Desktop
 // 5 = Files
+// 6 = Admin PowerShell
+// 8 = User Shell
+// 9 = User PowerShell
 // 10 = Web-RDP
 // 11 = Web-SSH
 // 12 = Web-VNC
@@ -80,6 +83,72 @@ module.exports.CreateMeshRelay = function (parent, ws, req, domain, user, cookie
         CreateMeshRelayEx(parent, ws, req, domain, user, cookie);
     }
 }
+
+// Record a new entry in a recording log
+function recordingEntry (logfile, type, flags, data, func, tag) {
+    try {
+        if (logfile.text) {
+            // Text recording format
+            var out = '';
+            const utcDate = new Date(Date.now());
+            if (type == 1) {
+                // End of start
+                out = data + '\r\n' + utcDate.toUTCString() + ', ' + "<<<START>>>" + '\r\n';
+            } else if (type == 3) {
+                // End of log
+                out = new Date(Date.now() - 5000).toUTCString() + ', ' + "<<<END>>>" + '\r\n';
+            } else if (typeof data == 'string') {
+                // Log message
+                if (logfile.text == 1) {
+                    out = utcDate.toUTCString() + ', ' + data + '\r\n';
+                } else if (logfile.text == 2) {
+                    try {
+                        var x = JSON.parse(data);
+                        if (typeof x.action == 'string') {
+                            if ((x.action == 'chat') && (typeof x.msg == 'string')) { out = utcDate.toUTCString() + ', ' + (((flags & 2) ? '--> ' : '<-- ') + x.msg + '\r\n'); }
+                            else if ((x.action == 'file') && (typeof x.name == 'string') && (typeof x.size == 'number')) { out = utcDate.toUTCString() + ', ' + (((flags & 2) ? '--> ' : '<-- ') + "File Transfer" + ', \"' + x.name + '\" (' + x.size + ' ' + "bytes" + ')\r\n'); }
+                        } else if (x.ctrlChannel == null) { out = utcDate.toUTCString() + ', ' + data + '\r\n'; }
+                    } catch (ex) {
+                        out = utcDate.toUTCString() + ', ' + data + '\r\n';
+                    }
+                }
+            }
+            if (out != null) {
+                // Log this event
+                const block = Buffer.from(out);
+                require('fs').write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
+                logfile.size += block.length;
+            } else {
+                // Skip logging this.
+                func(logfile, tag);
+            }
+        } else {
+            // Binary recording format
+            if (typeof data == 'string') {
+                // String write
+                var blockData = Buffer.from(data), header = Buffer.alloc(16); // Header: Type (2) + Flags (2) + Size(4) + Time(8)
+                header.writeInt16BE(type, 0); // Type (1 = Start, 2 = Network Data, 3 = End)
+                header.writeInt16BE(flags, 2); // Flags (1 = Binary, 2 = User)
+                header.writeInt32BE(blockData.length, 4); // Size
+                header.writeIntBE((type == 3 ? new Date(Date.now() - 5000) : new Date()), 10, 6); // Time
+                var block = Buffer.concat([header, blockData]);
+                require('fs').write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
+                logfile.size += block.length;
+            } else {
+                // Binary write
+                var header = Buffer.alloc(16); // Header: Type (2) + Flags (2) + Size(4) + Time(8)
+                header.writeInt16BE(type, 0); // Type (1 = Start, 2 = Network Data)
+                header.writeInt16BE(flags | 1, 2); // Flags (1 = Binary, 2 = User)
+                header.writeInt32BE(data.length, 4); // Size
+                header.writeIntBE((type == 3 ? new Date(Date.now() - 5000) : new Date()), 10, 6); // Time
+                var block = Buffer.concat([header, data]);
+                require('fs').write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
+                logfile.size += block.length;
+            }
+        }
+    } catch (ex) { console.log(ex); func(logfile, tag); }
+}
+module.exports.recordingEntry = recordingEntry;
 
 function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
     const currentTime = Date.now();
@@ -122,6 +191,12 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
         try { sr = parseInt(req.query.slowrelay); } catch (ex) { }
         if ((typeof sr == 'number') && (sr > 0) && (sr < 1000)) { obj.ws.slowRelay = sr; }
     }
+    
+    // Check if protocol is set in the cookie and if so replace req.query.p but only if its not already set or blank
+    if ((cookie != null) && (typeof cookie.p == 'number') && (obj.req.query.p === undefined || obj.req.query.p === "")) { obj.req.query.p = cookie.p; }
+
+    // Patch Messenger protocol to 200
+    if ((obj.id != null) && (obj.id.startsWith('meshmessenger/') == true)) { obj.req.query.p = 200; }
 
     // Mesh Rights
     const MESHRIGHT_EDITMESH = 1;
@@ -445,15 +520,15 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                                     relayinfo.peer1.sendPeerImage();
                                 } else {
                                     // Write the recording file header
-                                    parent.parent.debug('relay', 'Relay: Started recoding to file: ' + recFullFilename);
+                                    parent.parent.debug('relay', 'Relay: Started recording to file: ' + recFullFilename);
                                     var metadata = {
                                         magic: 'MeshCentralRelaySession',
                                         ver: 1,
                                         userid: sessionUser._id,
                                         username: sessionUser.name,
                                         sessionid: obj.id,
-                                        ipaddr1: (obj.req == null) ? null : obj.req.clientIp,
-                                        ipaddr2: ((obj.peer == null) || (obj.peer.req == null)) ? null : obj.peer.req.clientIp,
+                                        ipaddr1: ((obj.peer == null) || (obj.peer.req == null)) ? null : obj.peer.req.clientIp,
+                                        ipaddr2: (obj.req == null) ? null : obj.req.clientIp,
                                         time: new Date().toLocaleString(),
                                         protocol: (((obj.req == null) || (obj.req.query == null)) ? null : obj.req.query.p),
                                         nodeid: (((obj.req == null) || (obj.req.query == null)) ? null : obj.req.query.nodeid)
@@ -509,9 +584,10 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     // Log the connection
                     if (sessionUser != null) {
                         var msg = 'Started relay session', msgid = 13;
-                        if (obj.req.query.p == 1) { msg = 'Started terminal session'; msgid = 14; }
+                        if ([1,6,8,9].indexOf(obj.req.query.p) >= 0) { msg = 'Started terminal session'; msgid = 14; } // admin shell, admin powershell, user shell, user powershell
                         else if (obj.req.query.p == 2) { msg = 'Started desktop session'; msgid = 15; }
                         else if (obj.req.query.p == 5) { msg = 'Started file management session'; msgid = 16; }
+                        else if (obj.req.query.p == 200) { msg = 'Started messenger session'; msgid = 162; }
                         var event = { etype: 'relay', action: 'relaylog', domain: domain.id, userid: sessionUser._id, username: sessionUser.name, msgid: msgid, msgArgs: [obj.id, obj.peer.req.clientIp, req.clientIp], msg: msg + ' \"' + obj.id + '\" from ' + obj.peer.req.clientIp + ' to ' + req.clientIp, protocol: req.query.p, nodeid: req.query.nodeid };
                         if (obj.guestname) { event.guestname = obj.guestname; } else if (relayinfo.peer1.guestname) { event.guestname = relayinfo.peer1.guestname; } // If this is a sharing session, set the guest name here.
                         parent.parent.DispatchEvent(['*', sessionUser._id], obj, event);
@@ -707,7 +783,7 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     // Log the disconnection
                     if (ws.time) {
                         var msg = 'Ended relay session', msgid = 9;
-                        if (obj.req.query.p == 1) { msg = 'Ended terminal session', msgid = 10; }
+                        if ([1,6,8,9].indexOf(obj.req.query.p) >= 0) { msg = 'Ended terminal session', msgid = 10; } // admin shell, admin powershell, user shell, user powershell
                         else if (obj.req.query.p == 2) { msg = 'Ended desktop session', msgid = 11; }
                         else if (obj.req.query.p == 5) { msg = 'Ended file management session', msgid = 12; }
                         else if (obj.req.query.p == 200) { msg = 'Ended messenger session', msgid = 112; }
@@ -747,13 +823,14 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     setTimeout(function(){ // wait 5 seconds before finishing file for some reason?
                         recordingEntry(logfile, 3, 0, 'MeshCentralMCREC', function (logfile, tag) {
                             parent.parent.fs.closeSync(logfile.fd);
+                            parent.parent.debug('relay', 'Relay: Finished recording to file: ' + tag.logfile.filename);
 
                             // Now that the recording file is closed, check if we need to index this file.
                             if (domain.sessionrecording.index && domain.sessionrecording.index !== false) { parent.parent.certificateOperations.acceleratorPerformOperation('indexMcRec', tag.logfile.filename); }
 
                             // Compute session length
                             var sessionLength = null;
-                            if (tag.logfile.startTime != null) { sessionLength = Math.round((Date.now() - tag.logfile.startTime) / 1000); }
+                            if (tag.logfile.startTime != null) { sessionLength = Math.round((Date.now() - tag.logfile.startTime) / 1000) - 5; }
 
                             // Add a event entry about this recording
                             var basefile = parent.parent.path.basename(tag.logfile.filename);
@@ -792,71 +869,6 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
         if (obj.pid != null) { parent.parent.RemoveAllEventDispatch(obj); }
     }
 
-    // Record a new entry in a recording log
-    function recordingEntry(logfile, type, flags, data, func, tag) {
-        try {
-            if (logfile.text) {
-                // Text recording format
-                var out = '';
-                const utcDate = new Date(Date.now());
-                if (type == 1) {
-                    // End of start
-                    out = data + '\r\n' + utcDate.toUTCString() + ', ' + "<<<START>>>" + '\r\n';
-                } else if (type == 3) {
-                    // End of log
-                    out = utcDate.toUTCString() + ', ' + "<<<END>>>" + '\r\n';
-                } else if (typeof data == 'string') {
-                    // Log message
-                    if (logfile.text == 1) {
-                        out = utcDate.toUTCString() + ', ' + data + '\r\n';
-                    } else if (logfile.text == 2) {
-                        try {
-                            var x = JSON.parse(data);
-                            if (typeof x.action == 'string') {
-                                if ((x.action == 'chat') && (typeof x.msg == 'string')) { out = utcDate.toUTCString() + ', ' + (((flags & 2) ? '--> ' : '<-- ') + x.msg + '\r\n'); }
-                                else if ((x.action == 'file') && (typeof x.name == 'string') && (typeof x.size == 'number')) { out = utcDate.toUTCString() + ', ' + (((flags & 2) ? '--> ' : '<-- ') + "File Transfer" + ', \"' + x.name + '\" (' + x.size + ' ' + "bytes" + ')\r\n'); }
-                            } else if (x.ctrlChannel == null) { out = utcDate.toUTCString() + ', ' + data + '\r\n'; }
-                        } catch (ex) {
-                            out = utcDate.toUTCString() + ', ' + data + '\r\n';
-                        }
-                    }
-                }
-                if (out != null) {
-                    // Log this event
-                    const block = Buffer.from(out);
-                    parent.parent.fs.write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
-                    logfile.size += block.length;
-                } else {
-                    // Skip logging this.
-                    func(logfile, tag);
-                }
-            } else {
-                // Binary recording format
-                if (typeof data == 'string') {
-                    // String write
-                    var blockData = Buffer.from(data), header = Buffer.alloc(16); // Header: Type (2) + Flags (2) + Size(4) + Time(8)
-                    header.writeInt16BE(type, 0); // Type (1 = Header, 2 = Network Data)
-                    header.writeInt16BE(flags, 2); // Flags (1 = Binary, 2 = User)
-                    header.writeInt32BE(blockData.length, 4); // Size
-                    header.writeIntBE(new Date(), 10, 6); // Time
-                    var block = Buffer.concat([header, blockData]);
-                    parent.parent.fs.write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
-                    logfile.size += block.length;
-                } else {
-                    // Binary write
-                    var header = Buffer.alloc(16); // Header: Type (2) + Flags (2) + Size(4) + Time(8)
-                    header.writeInt16BE(type, 0); // Type (1 = Header, 2 = Network Data)
-                    header.writeInt16BE(flags | 1, 2); // Flags (1 = Binary, 2 = User)
-                    header.writeInt32BE(data.length, 4); // Size
-                    header.writeIntBE(new Date(), 10, 6); // Time
-                    var block = Buffer.concat([header, data]);
-                    parent.parent.fs.write(logfile.fd, block, 0, block.length, function () { func(logfile, tag); });
-                    logfile.size += block.length;
-                }
-            }
-        } catch (ex) { console.log(ex); func(logfile, tag); }
-    }
-
     // If this session has a expire time, setup the expire timer now.
     setExpireTimer();
 
@@ -887,7 +899,7 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                 if (user != null) { rcookieData.ruserid = user._id; } else if (obj.nouser === true) { rcookieData.nouser = 1; }
                 const rcookie = parent.parent.encodeCookie(rcookieData, parent.parent.loginCookieEncryptionKey);
                 if (obj.id == null) { obj.id = parent.crypto.randomBytes(9).toString('base64').replace(/\+/g, '@').replace(/\//g, '$'); } // If there is no connection id, generate one.
-                const command = { nodeid: cookie.nodeid, action: 'msg', type: 'tunnel', value: '*/' + xdomain + 'meshrelay.ashx?id=' + obj.id + '&rauth=' + rcookie, tcpport: cookie.tcpport, tcpaddr: cookie.tcpaddr, soptions: {} };
+                const command = { nodeid: cookie.nodeid, action: 'msg', type: 'tunnel', value: '*/' + xdomain + 'meshrelay.ashx?' + (obj.req.query.p != null ? ('p=' + obj.req.query.p + '&') : '') + 'id=' + obj.id + '&rauth=' + rcookie, tcpport: cookie.tcpport, tcpaddr: cookie.tcpaddr, soptions: {} };
                 if (user) { command.userid = user._id; }
                 if (typeof domain.consentmessages == 'object') {
                     if (typeof domain.consentmessages.title == 'string') { command.soptions.consentTitle = domain.consentmessages.title; }
@@ -896,6 +908,8 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     if (typeof domain.consentmessages.files == 'string') { command.soptions.consentMsgFiles = domain.consentmessages.files; }
                     if ((typeof domain.consentmessages.consenttimeout == 'number') && (domain.consentmessages.consenttimeout > 0)) { command.soptions.consentTimeout = domain.consentmessages.consenttimeout; }
                     if (domain.consentmessages.autoacceptontimeout === true) { command.soptions.consentAutoAccept = true; }
+                    if (domain.consentmessages.autoacceptifnouser === true) { command.soptions.consentAutoAcceptIfNoUser = true; }
+                    if (domain.consentmessages.oldstyle === true) { command.soptions.oldStyle = true; }
                 }
                 if (typeof domain.notificationmessages == 'object') {
                     if (typeof domain.notificationmessages.title == 'string') { command.soptions.notifyTitle = domain.notificationmessages.title; }
@@ -925,7 +939,7 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                 if (obj.id == null) { obj.id = parent.crypto.randomBytes(9).toString('base64').replace(/\+/g, '@').replace(/\//g, '$'); } // If there is no connection id, generate one.
                 const rcookie = parent.parent.encodeCookie({ ruserid: user._id }, parent.parent.loginCookieEncryptionKey);
                 if (obj.req.query.tcpport != null) {
-                    const command = { nodeid: obj.req.query.nodeid, action: 'msg', type: 'tunnel', userid: user._id, value: '*/' + xdomain + 'meshrelay.ashx?id=' + obj.id + '&rauth=' + rcookie, tcpport: obj.req.query.tcpport, tcpaddr: ((obj.req.query.tcpaddr == null) ? '127.0.0.1' : obj.req.query.tcpaddr), soptions: {} };
+                    const command = { nodeid: obj.req.query.nodeid, action: 'msg', type: 'tunnel', userid: user._id, value: '*/' + xdomain + 'meshrelay.ashx?' + (obj.req.query.p != null ? ('p=' + obj.req.query.p + '&') : '') + 'id=' + obj.id + '&rauth=' + rcookie, tcpport: obj.req.query.tcpport, tcpaddr: ((obj.req.query.tcpaddr == null) ? '127.0.0.1' : obj.req.query.tcpaddr), soptions: {} };
                     if (typeof domain.consentmessages == 'object') {
                         if (typeof domain.consentmessages.title == 'string') { command.soptions.consentTitle = domain.consentmessages.title; }
                         if (typeof domain.consentmessages.desktop == 'string') { command.soptions.consentMsgDesktop = domain.consentmessages.desktop; }
@@ -933,6 +947,8 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                         if (typeof domain.consentmessages.files == 'string') { command.soptions.consentMsgFiles = domain.consentmessages.files; }
                         if ((typeof domain.consentmessages.consenttimeout == 'number') && (domain.consentmessages.consenttimeout > 0)) { command.soptions.consentTimeout = domain.consentmessages.consenttimeout; }
                         if (domain.consentmessages.autoacceptontimeout === true) { command.soptions.consentAutoAccept = true; }
+                        if (domain.consentmessages.autoacceptifnouser === true) { command.soptions.consentAutoAcceptIfNoUser = true; }
+                        if (domain.consentmessages.oldstyle === true) { command.soptions.oldStyle = true; }
                     }
                     if (typeof domain.notificationmessages == 'object') {
                         if (typeof domain.notificationmessages.title == 'string') { command.soptions.notifyTitle = domain.notificationmessages.title; }
@@ -943,14 +959,15 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     parent.parent.debug('relay', 'Relay: Sending agent TCP tunnel command: ' + JSON.stringify(command));
                     if (obj.sendAgentMessage(command, user._id, domain.id) == false) { delete obj.id; parent.parent.debug('relay', 'Relay: Unable to contact this agent (' + obj.req.clientIp + ')'); }
                 } else if (obj.req.query.udpport != null) {
-                    const command = { nodeid: obj.req.query.nodeid, action: 'msg', type: 'tunnel', userid: user._id, value: '*/' + xdomain + 'meshrelay.ashx?id=' + obj.id + '&rauth=' + rcookie, udpport: obj.req.query.udpport, udpaddr: ((obj.req.query.udpaddr == null) ? '127.0.0.1' : obj.req.query.udpaddr), soptions: {} };
-                    if (typeof domain.consentmessages == 'object') {
+                    const command = { nodeid: obj.req.query.nodeid, action: 'msg', type: 'tunnel', userid: user._id, value: '*/' + xdomain + 'meshrelay.ashx?' + (obj.req.query.p != null ? ('p=' + obj.req.query.p + '&') : '') + 'id=' + obj.id + '&rauth=' + rcookie, udpport: obj.req.query.udpport, udpaddr: ((obj.req.query.udpaddr == null) ? '127.0.0.1' : obj.req.query.udpaddr), soptions: {} };                    if (typeof domain.consentmessages == 'object') {
                         if (typeof domain.consentmessages.title == 'string') { command.soptions.consentTitle = domain.consentmessages.title; }
                         if (typeof domain.consentmessages.desktop == 'string') { command.soptions.consentMsgDesktop = domain.consentmessages.desktop; }
                         if (typeof domain.consentmessages.terminal == 'string') { command.soptions.consentMsgTerminal = domain.consentmessages.terminal; }
                         if (typeof domain.consentmessages.files == 'string') { command.soptions.consentMsgFiles = domain.consentmessages.files; }
                         if ((typeof domain.consentmessages.consenttimeout == 'number') && (domain.consentmessages.consenttimeout > 0)) { command.soptions.consentTimeout = domain.consentmessages.consenttimeout; }
                         if (domain.consentmessages.autoacceptontimeout === true) { command.soptions.consentAutoAccept = true; }
+                        if (domain.consentmessages.autoacceptifnouser === true) { command.soptions.consentAutoAcceptIfNoUser = true; }
+                        if (domain.consentmessages.oldstyle === true) { command.soptions.oldStyle = true; }
                     }
                     if (typeof domain.notificationmessages == 'object') {
                         if (typeof domain.notificationmessages.title == 'string') { command.soptions.notifyTitle = domain.notificationmessages.title; }
@@ -1002,6 +1019,8 @@ function CreateMeshRelayEx(parent, ws, req, domain, user, cookie) {
                     if (typeof domain.consentmessages.files == 'string') { command.soptions.consentMsgFiles = domain.consentmessages.files; }
                     if ((typeof domain.consentmessages.consenttimeout == 'number') && (domain.consentmessages.consenttimeout > 0)) { command.soptions.consentTimeout = domain.consentmessages.consenttimeout; }
                     if (domain.consentmessages.autoacceptontimeout === true) { command.soptions.consentAutoAccept = true; }
+                    if (domain.consentmessages.autoacceptifnouser === true) { command.soptions.consentAutoAcceptIfNoUser = true; }
+                    if (domain.consentmessages.oldstyle === true) { command.soptions.oldStyle = true; }
                 }
                 if (typeof domain.notificationmessages == 'object') {
                     if (typeof domain.notificationmessages.title == 'string') { command.soptions.notifyTitle = domain.notificationmessages.title; }
@@ -1230,6 +1249,7 @@ function CreateLocalRelayEx(parent, ws, req, domain, user, cookie) {
             else if (req.query.p == 11) { protocolStr = 'SSH-TERM'; }
             else if (req.query.p == 12) { protocolStr = 'VNC'; }
             else if (req.query.p == 13) { protocolStr = 'SSH-FILES'; }
+            else if (req.query.p == 14) { protocolStr = 'Web-TCP'; }
             var event = { etype: 'relay', action: 'relaylog', domain: domain.id, userid: obj.user._id, username: obj.user.name, msgid: 121, msgArgs: [obj.id, protocolStr, obj.host, Math.floor((Date.now() - obj.time) / 1000)], msg: 'Ended local relay session \"' + obj.id + '\", protocol ' + protocolStr + ' to ' + obj.host + ', ' + Math.floor((Date.now() - obj.time) / 1000) + ' second(s)', nodeid: obj.req.query.nodeid, protocol: req.query.p, in: inTraffc, out: outTraffc };
             if (obj.guestname) { event.guestname = obj.guestname; } // If this is a sharing session, set the guest name here.
             parent.parent.DispatchEvent(['*', user._id], obj, event);
@@ -1284,6 +1304,7 @@ function CreateLocalRelayEx(parent, ws, req, domain, user, cookie) {
                 else if (req.query.p == 11) { protocolStr = 'SSH-TERM'; }
                 else if (req.query.p == 12) { protocolStr = 'VNC'; }
                 else if (req.query.p == 13) { protocolStr = 'SSH-FILES'; }
+                else if (req.query.p == 14) { protocolStr = 'Web-TCP'; }
                 obj.time = Date.now();
                 var event = { etype: 'relay', action: 'relaylog', domain: domain.id, userid: obj.user._id, username: obj.user.name, msgid: 120, msgArgs: [obj.id, protocolStr, obj.host], msg: 'Started local relay session \"' + obj.id + '\", protocol ' + protocolStr + ' to ' + obj.host, nodeid: req.query.nodeid, protocol: req.query.p };
                 if (obj.guestname) { event.guestname = obj.guestname; } // If this is a sharing session, set the guest name here.

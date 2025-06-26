@@ -70,31 +70,38 @@ function linux_identifiers()
     var values = {};
 
     if (!require('fs').existsSync('/sys/class/dmi/id')) {         
-        if(require('fs').existsSync('/sys/firmware/devicetree/base/model')){
-            if(require('fs').readFileSync('/sys/firmware/devicetree/base/model').toString().trim().startsWith('Raspberry')){
+        if (require('fs').existsSync('/sys/firmware/devicetree/base/model')) {
+            if (require('fs').readFileSync('/sys/firmware/devicetree/base/model').toString().trim().startsWith('Raspberry')) {
                 identifiers['board_vendor'] = 'Raspberry Pi';
                 identifiers['board_name'] = require('fs').readFileSync('/sys/firmware/devicetree/base/model').toString().trim();
                 identifiers['board_serial'] = require('fs').readFileSync('/sys/firmware/devicetree/base/serial-number').toString().trim();
-            }else{
+                const memorySlots = [];
+                var child = require('child_process').execFile('/bin/sh', ['sh']);
+                child.stdout.str = ''; child.stdout.on('data', dataHandler);
+                child.stdin.write('vcgencmd get_mem arm && vcgencmd get_mem gpu\nexit\n');
+                child.waitExit();
+                try { 
+                    const lines = child.stdout.str.trim().split('\n');
+                    if (lines.length == 2) {
+                        memorySlots.push({ Locator: "ARM Memory", Size: lines[0].split('=')[1].trim() })
+                        memorySlots.push({ Locator: "GPU Memory", Size: lines[1].split('=')[1].trim() })
+                        ret.memory = { Memory_Device: memorySlots };
+                    }
+                } catch (xx) { }
+            } else {
                 throw('Unknown board');
             }
-        }else {
+        } else {
             throw ('this platform does not have DMI statistics');
         }
     } else {
         var entries = require('fs').readdirSync('/sys/class/dmi/id');
-        for(var i in entries)
-        {
-            if (require('fs').statSync('/sys/class/dmi/id/' + entries[i]).isFile())
-            {
-                try
-                {
+        for (var i in entries) {
+            if (require('fs').statSync('/sys/class/dmi/id/' + entries[i]).isFile()) {
+                try {
                     ret[entries[i]] = require('fs').readFileSync('/sys/class/dmi/id/' + entries[i]).toString().trim();
-                }
-                catch(z)
-                {
-                }
-                if (ret[entries[i]] == 'None') { delete ret[entries[i]];}
+                } catch(z) { }
+                if (ret[entries[i]] == 'None') { delete ret[entries[i]]; }
             }
         }
         entries = null;
@@ -141,14 +148,22 @@ function linux_identifiers()
     // Fetch Storage Info
     child = require('child_process').execFile('/bin/sh', ['sh']);
     child.stdout.str = ''; child.stdout.on('data', dataHandler);
-    child.stdin.write("lshw -class disk | tr '\\n' '`' | awk '" + '{ len=split($0,lines,"*"); printf "["; for(i=2;i<=len;++i) { model=""; caption=""; size=""; clen=split(lines[i],item,"`"); for(j=2;j<clen;++j) { split(item[j],tokens,":"); split(tokens[1],key," "); if(key[1]=="description") { caption=substr(tokens[2],2); } if(key[1]=="product") { model=substr(tokens[2],2); } if(key[1]=="size") { size=substr(tokens[2],2);  } } if(model=="") { model=caption; } if(caption!="" || model!="") { printf "%s{\\"Caption\\":\\"%s\\",\\"Model\\":\\"%s\\",\\"Size\\":\\"%s\\"}",(i==2?"":","),caption,model,size; }  } printf "]"; }\'\nexit\n');
+    child.stdin.write("lshw -class disk -disable network | tr '\\n' '`' | awk '" + '{ len=split($0,lines,"*"); printf "["; for(i=2;i<=len;++i) { model=""; caption=""; size=""; clen=split(lines[i],item,"`"); for(j=2;j<clen;++j) { split(item[j],tokens,":"); split(tokens[1],key," "); if(key[1]=="description") { caption=substr(tokens[2],2); } if(key[1]=="product") { model=substr(tokens[2],2); } if(key[1]=="size") { size=substr(tokens[2],2);  } } if(model=="") { model=caption; } if(caption!="" || model!="") { printf "%s{\\"Caption\\":\\"%s\\",\\"Model\\":\\"%s\\",\\"Size\\":\\"%s\\"}",(i==2?"":","),caption,model,size; }  } printf "]"; }\'\nexit\n');
     child.waitExit();
     try { identifiers['storage_devices'] = JSON.parse(child.stdout.str.trim()); } catch (xx) { }
+    child = null;
+
+    // Fetch storage volumes using df
+    child = require('child_process').execFile('/bin/sh', ['sh']);
+    child.stdout.str = ''; child.stdout.on('data', dataHandler);
+    child.stdin.write('df -T | awk \'NR==1 || $1 ~ ".+"{print $3, $4, $5, $7, $2}\' | awk \'NR>1 {printf "{\\"size\\":\\"%s\\",\\"used\\":\\"%s\\",\\"available\\":\\"%s\\",\\"mount_point\\":\\"%s\\",\\"type\\":\\"%s\\"},", $1, $2, $3, $4, $5}\' | sed \'$ s/,$//\' | awk \'BEGIN {printf "["} {printf "%s", $0} END {printf "]"}\'\nexit\n');
+    child.waitExit();
+    try { ret.volumes = JSON.parse(child.stdout.str.trim()); } catch (xx) { }
+    child = null;
 
     values.identifiers = identifiers;
     values.linux = ret;
     trimIdentifiers(values.identifiers);
-    child = null;
 
     var dmidecode = require('lib-finder').findBinary('dmidecode');
     if (dmidecode != null)
@@ -343,6 +358,36 @@ function linux_identifiers()
         child = null;
     }
 
+    // Linux Last Boot Up Time
+    try {
+        child = require('child_process').execFile('/usr/bin/uptime', ['', '-s']); // must include blank value at begining for some reason?
+        child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
+        child.stderr.on('data', function () { });
+        child.waitExit();
+        var regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/;
+        if (regex.test(child.stdout.str.trim())) {
+            values.linux.LastBootUpTime = child.stdout.str.trim();
+        } else {
+            child = require('child_process').execFile('/bin/sh', ['sh']);
+            child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
+            child.stdin.write('date -d "@$(( $(date +%s) - $(awk \'{print int($1)}\' /proc/uptime) ))" "+%Y-%m-%d %H:%M:%S"\nexit\n');
+            child.waitExit();
+            if (regex.test(child.stdout.str.trim())) {
+                values.linux.LastBootUpTime = child.stdout.str.trim();
+            }
+        }
+        child = null;
+    } catch (ex) { }
+
+    // Linux TPM
+    try {
+        if (require('fs').statSync('/sys/class/tpm/tpm0').isDirectory()){
+            values.tpm = {
+                SpecVersion: require('fs').readFileSync('/sys/class/tpm/tpm0/tpm_version_major').toString().trim()
+            }
+        }
+    } catch (ex) { }
+
     return (values);
 }
 
@@ -375,104 +420,6 @@ function windows_wmic_results(str)
         result.push(obj);
     }
     return (result);
-}
-
-function windows_volumes()
-{
-    var promise = require('promise');
-    var p1 = new promise(function (res, rej) { this._res = res; this._rej = rej; });
-    var p2 = new promise(function (res, rej) { this._res = res; this._rej = rej; });
-
-    p1._p2 = p2;
-    p2._p1 = p1;
-
-    var child = require('child_process').execFile(process.env['windir'] + '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', ['powershell', '-noprofile', '-nologo', '-command', '-']);
-    p1.child = child;
-    child.promise = p1;
-    child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
-    child.stdin.write('Get-Volume | Select-Object -Property DriveLetter,FileSystemLabel,FileSystemType,Size,SizeRemaining,DriveType | ConvertTo-Csv -NoTypeInformation\nexit\n');
-    child.on('exit', function (c)
-    {
-        var a, i, tokens, key;
-        var ret = {};
-
-        a = this.stdout.str.trim().split('\r\n');
-        for (i = 1; i < a.length; ++i)
-        {
-            tokens = a[i].split(',');
-            if (tokens[0] != '' && tokens[1] != undefined)
-            {
-                ret[tokens[0].split('"')[1]] =
-                    {
-                        name: tokens[1].split('"')[1],
-                        type: tokens[2].split('"')[1],
-                        size: tokens[3].split('"')[1],
-                        sizeremaining: tokens[4].split('"')[1],
-                        removable: tokens[5].split('"')[1] == 'Removable',
-                        cdrom: tokens[5].split('"')[1] == 'CD-ROM'
-                    };
-            }
-        }
-        this.promise._res({ r: ret, t: tokens });
-    });
-
-    p1.then(function (j)
-    {
-        var ret = j.r;
-        var tokens = j.t;
-
-        var child = require('child_process').execFile(process.env['windir'] + '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', ['powershell', '-noprofile', '-nologo', '-command', '-']);
-        p2.child = child;
-        child.promise = p2;
-        child.tokens = tokens;
-        child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
-        child.stdin.write('Get-BitLockerVolume | Select-Object -Property MountPoint,VolumeStatus,ProtectionStatus | ConvertTo-Csv -NoTypeInformation\nexit\n');
-        child.on('exit', function ()
-        {
-            var i;
-            var a = this.stdout.str.trim().split('\r\n');
-            for (i = 1; i < a.length; ++i)
-            {
-                tokens = a[i].split(',');
-                key = tokens[0].split(':').shift().split('"').pop();
-                if (ret[key] != null)
-                {
-                    ret[key].volumeStatus = tokens[1].split('"')[1];
-                    ret[key].protectionStatus = tokens[2].split('"')[1];
-                    try {
-                        var foundIDMarkedLine = false, foundMarkedLine = false, identifier = '', password = '';
-                        var keychild = require('child_process').execFile(process.env['windir'] + '\\system32\\cmd.exe', ['/c', 'manage-bde -protectors -get ', tokens[0].split('"')[1], ' -Type recoverypassword'], {});
-                        keychild.stdout.str = ''; keychild.stdout.on('data', function (c) { this.str += c.toString(); });
-                        keychild.waitExit();
-                        var lines = keychild.stdout.str.trim().split('\r\n');
-                        for (var x = 0; x < lines.length; x++) { // Loop each line
-                            var abc = lines[x].trim();
-                            var englishidpass = (abc !== '' && abc.includes('Numerical Password:')); // English ID
-                            var germanidpass = (abc !== '' && abc.includes('Numerisches Kennwort:')); // German ID
-                            var frenchidpass = (abc !== '' && abc.includes('Mot de passe num')); // French ID
-                            var englishpass = (abc !== '' && abc.includes('Password:') && !abc.includes('Numerical Password:')); // English Password
-                            var germanpass = (abc !== '' && abc.includes('Kennwort:') && !abc.includes('Numerisches Kennwort:')); // German Password
-                            var frenchpass = (abc !== '' && abc.includes('Mot de passe :') && !abc.includes('Mot de passe num')); // French Password
-                            if (englishidpass || germanidpass || frenchidpass|| englishpass || germanpass || frenchpass) {
-                                var nextline = lines[x + 1].trim();
-                                if (x + 1 < lines.length && (nextline !== '' && (nextline.startsWith('ID:') || nextline.startsWith('ID :')) )) {
-                                    identifier = nextline.replace('ID:','').replace('ID :', '').trim();
-                                    foundIDMarkedLine = true;
-                                }else if (x + 1 < lines.length && nextline !== '') {
-                                    password = nextline;
-                                    foundMarkedLine = true;
-                                }
-                            }
-                        }
-                        ret[key].identifier = (foundIDMarkedLine ? identifier : ''); // Set Bitlocker Identifier
-                        ret[key].recoveryPassword = (foundMarkedLine ? password : ''); // Set Bitlocker Password
-                    } catch(ex) { }
-                }
-            }
-            this.promise._res(ret);
-        });
-    });
-    return (p2);
 }
 
 function windows_identifiers()
@@ -559,6 +506,23 @@ function windows_identifiers()
     }
 
     try { ret.identifiers.cpu_name = ret.windows.cpu[0].Name; } catch (x) { }
+
+    // Windows TPM
+    IntToStr = function (v) { return String.fromCharCode((v >> 24) & 0xFF, (v >> 16) & 0xFF, (v >> 8) & 0xFF, v & 0xFF); };
+    try {
+        values = require('win-wmi').query('ROOT\\CIMV2\\Security\\MicrosoftTpm', "SELECT * FROM Win32_Tpm", ['IsActivated_InitialValue','IsEnabled_InitialValue','IsOwned_InitialValue','ManufacturerId','ManufacturerVersion','SpecVersion']);
+        if(values[0]) {
+            ret.tpm = {
+                SpecVersion: values[0].SpecVersion.split(",")[0],
+                ManufacturerId: IntToStr(values[0].ManufacturerId).replace(/[^\x00-\x7F]/g, ""),
+                ManufacturerVersion: values[0].ManufacturerVersion,
+                IsActivated: values[0].IsActivated_InitialValue,
+                IsEnabled: values[0].IsEnabled_InitialValue,
+                IsOwned: values[0].IsOwned_InitialValue,
+            }
+        }
+    } catch (ex) { }
+
     return (ret);
 }
 function macos_identifiers()
@@ -674,6 +638,50 @@ function macos_identifiers()
         ret.identifiers.storage_devices = devices;
     }
 
+    // Fetch storage volumes using df
+    child = require('child_process').execFile('/bin/sh', ['sh']);
+    child.stdout.str = ''; child.stdout.on('data', dataHandler);
+    child.stdin.write('df -aHY | awk \'NR>1 {printf "{\\"size\\":\\"%s\\",\\"used\\":\\"%s\\",\\"available\\":\\"%s\\",\\"mount_point\\":\\"%s\\",\\"type\\":\\"%s\\"},", $3, $4, $5, $10, $2}\' | sed \'$ s/,$//\' | awk \'BEGIN {printf "["} {printf "%s", $0} END {printf "]"}\'\nexit\n');
+    child.waitExit();
+    try {
+        ret.darwin.volumes = JSON.parse(child.stdout.str.trim());
+        for (var index = 0; index < ret.darwin.volumes.length; index++) {
+            if (ret.darwin.volumes[index].type == 'auto_home'){
+                ret.darwin.volumes.splice(index,1);
+            }
+        }
+        if (ret.darwin.volumes.length == 0) { // not sonima OS so dont show type for now
+            child = require('child_process').execFile('/bin/sh', ['sh']);
+            child.stdout.str = ''; child.stdout.on('data', dataHandler);
+            child.stdin.write('df -aH | awk \'NR>1 {printf "{\\"size\\":\\"%s\\",\\"used\\":\\"%s\\",\\"available\\":\\"%s\\",\\"mount_point\\":\\"%s\\"},", $2, $3, $4, $9}\' | sed \'$ s/,$//\' | awk \'BEGIN {printf "["} {printf "%s", $0} END {printf "]"}\'\nexit\n');
+            child.waitExit();
+            try {
+                ret.darwin.volumes = JSON.parse(child.stdout.str.trim());
+                for (var index = 0; index < ret.darwin.volumes.length; index++) {
+                    if (ret.darwin.volumes[index].size == 'auto_home'){
+                        ret.darwin.volumes.splice(index,1);
+                    }
+                }
+            } catch (xx) { }
+        }
+    } catch (xx) { }
+    child = null;
+
+    // MacOS Last Boot Up Time
+    try {
+        child = require('child_process').execFile('/usr/sbin/sysctl', ['', 'kern.boottime']); // must include blank value at begining for some reason?
+        child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
+        child.stderr.on('data', function () { });
+        child.waitExit();
+        const timestampMatch = /\{ sec = (\d+), usec = \d+ \}/.exec(child.stdout.str.trim());
+        if (!ret.darwin) {
+            ret.darwin = { LastBootUpTime: parseInt(timestampMatch[1]) };
+        } else {
+            ret.darwin.LastBootUpTime = parseInt(timestampMatch[1]);
+        }
+        child = null;
+    } catch (ex) { }
+
     trimIdentifiers(ret.identifiers);
 
     child = null;
@@ -694,32 +702,35 @@ function hexToAscii(hexString) {
 
 function win_chassisType()
 {
-    var child = require('child_process').execFile(process.env['windir'] + '\\System32\\wbem\\wmic.exe', ['wmic', 'SystemEnclosure', 'get', 'ChassisTypes']);
+    // needs to be replaced with win-wmi but due to bug in win-wmi it doesnt handle arrays correctly
+    var child = require('child_process').execFile(process.env['windir'] + '\\System32\\WindowsPowerShell\\v1.0\\powershell.exe', ['powershell', '-noprofile', '-nologo', '-command', '-'], {});
+    if (child == null) { return ([]); }
+    child.descriptorMetadata = 'process-manager';
     child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
     child.stderr.str = ''; child.stderr.on('data', function (c) { this.str += c.toString(); });
+    child.stdin.write('Get-WmiObject Win32_SystemEnclosure | Select-Object -ExpandProperty ChassisTypes\r\n');
+    child.stdin.write('exit\r\n');
     child.waitExit();
-
-    try
-    {
-        var tok = child.stdout.str.split('{')[1].split('}')[0];
-        var val = tok.split(',')[0];
-        return (parseInt(val));
-    }
-    catch (e)
-    {
+    try {
+        return (parseInt(child.stdout.str));
+    } catch (e) {
         return (2); // unknown
     }
 }
 
 function win_systemType()
 {
-    var CSV = '/FORMAT:"' + require('util-language').wmicXslPath + 'csv"';
-    var child = require('child_process').execFile(process.env['windir'] + '\\System32\\wbem\\wmic.exe', ['wmic', 'ComputerSystem', 'get', 'PCSystemType', CSV]);
-    child.stdout.str = ''; child.stdout.on('data', function (c) { this.str += c.toString(); });
-    child.stderr.str = ''; child.stderr.on('data', function (c) { this.str += c.toString(); });
-    child.waitExit();
+    try {
+        var tokens = require('win-wmi').query('ROOT\\CIMV2', 'SELECT PCSystemType FROM Win32_ComputerSystem', ['PCSystemType']);
+        if (tokens[0]) {
+            return (parseInt(tokens[0]['PCSystemType']));
+        } else {
+            return (parseInt(1)); // default is desktop
+        }
+    } catch (ex) {
+        return (parseInt(1)); // default is desktop
+    }
 
-    return (parseInt(child.stdout.str.trim().split(',').pop()));
 }
 
 function win_formFactor(chassistype)
@@ -844,6 +855,7 @@ module.exports.isVM = function isVM()
             case 'Xen':
             case 'SeaBIOS':
             case 'EFI Development Kit II / OVMF':
+            case 'Proxmox distribution of EDK II':
                 ret = true;
                 break;
             default:
@@ -880,11 +892,6 @@ module.exports.isVM = function isVM()
     if (!ret) { ret = this.isDocker(); }
     return (ret);
 };
-
-if (process.platform == 'win32')
-{
-    module.exports.volumes_promise = windows_volumes;
-}
 
 // bios_date = BIOS->ReleaseDate
 // bios_vendor = BIOS->Manufacturer

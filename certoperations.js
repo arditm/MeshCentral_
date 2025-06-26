@@ -1000,6 +1000,7 @@ module.exports.CertificateOperations = function (parent) {
         var organization = null;
         var forceWebCertGen = 0;
         var forceMpsCertGen = 0;
+        var forceCodeCertGen = 0;
         if (certargs != undefined) {
             var xargs = certargs.split(',');
             if (xargs.length > 0) { commonName = xargs[0]; }
@@ -1025,6 +1026,7 @@ module.exports.CertificateOperations = function (parent) {
             r.CommonName = obj.getCertificateCommonName(r.web.cert);
             r.CommonNames = obj.getCertificateAltNames(r.web.cert);
             r.RootName = obj.getCertificateCommonName(r.root.cert);
+            r.CodeCertName = obj.getCertificateCommonName(r.codesign.cert);
 
             // If the "cert" name is not set, try to use the certificate CN instead (ok if the certificate is not wildcard).
             if (commonName == 'un-configured') {
@@ -1049,6 +1051,7 @@ module.exports.CertificateOperations = function (parent) {
                             config.domains[i].certs = r.dns[i];
                         } else {
                             console.log("WARNING: File \"webserver-" + i + "-cert-public.crt\" missing, domain \"" + i + "\" will not work correctly.");
+                            rcountmax++;
                         }
                     } else {
                         // If the web certificate already exist, load it. Load both certificate and private key
@@ -1084,10 +1087,11 @@ module.exports.CertificateOperations = function (parent) {
             // Check if we have correct certificates.
             if (obj.compareCertificateNames(r.CommonNames, commonName) == false) { console.log("Error: " + commonName + " does not match name in TLS certificate: " + r.CommonNames.join(', ')); forceWebCertGen = 1; } else { r.CommonName = commonName; }
             if (r.AmtMpsName != mpsCommonName) { forceMpsCertGen = 1; }
-            if (args.keepcerts == true) { forceWebCertGen = 0; forceMpsCertGen = 0; r.CommonName = commonName; }
+            if (r.CodeCertName.startsWith(commonName) === false) { forceCodeCertGen = 1; }
+            if (args.keepcerts == true) { forceWebCertGen = 0; forceMpsCertGen = 0; forceCodeCertGen = 0; r.CommonName = commonName; }
 
             // If the certificates matches what we want, use them.
-            if ((forceWebCertGen == 0) && (forceMpsCertGen == 0)) {
+            if ((forceWebCertGen == 0) && (forceMpsCertGen == 0) && (forceCodeCertGen == 0)) {
                 if (func !== null) { func(r); }
                 return r;
             }
@@ -1184,7 +1188,7 @@ module.exports.CertificateOperations = function (parent) {
 
         // If the code signing certificate does not exist, create one
         var codesignCertAndKey, codesignCertificate, codesignPrivateKey;
-        if (r.codesign == null) {
+        if ((r.codesign == null) || (forceCodeCertGen === 1)) {
             console.log("Generating code signing certificate...");
             codesignCertAndKey = obj.IssueWebServerCertificate(rootCertAndKey, true, commonName, country, organization, { codeSign: true }, strongCertificate);
             codesignCertificate = obj.pki.certificateToPem(codesignCertAndKey.cert);

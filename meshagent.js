@@ -58,15 +58,15 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
         dataAccounting();
 
         if ((arg == 1) || (arg == null)) { try { ws.close(); if (obj.nodeid != null) { parent.parent.debug('agent', 'Soft disconnect ' + obj.nodeid + ' (' + obj.remoteaddrport + ')'); } } catch (e) { console.log(e); } } // Soft close, close the websocket
-        if (arg == 2) { 
-            try { 
+        if (arg == 2) {
+            try {
                 if (ws._socket._parent != null)
                     ws._socket._parent.end();
                 else
                     ws._socket.end();
-                
-                if (obj.nodeid != null) { 
-                    parent.parent.debug('agent', 'Hard disconnect ' + obj.nodeid + ' (' + obj.remoteaddrport + ')'); 
+
+                if (obj.nodeid != null) {
+                    parent.parent.debug('agent', 'Hard disconnect ' + obj.nodeid + ' (' + obj.remoteaddrport + ')');
                 }
             } catch (e) { console.log(e); }
         }
@@ -616,7 +616,7 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
         }
 
         if ((mesh == null) && (typeof domain.orphanagentuser == 'string')) {
-            const adminUser = parent.users['user/' + domain.id + '/' + domain.orphanagentuser.toLowerCase()];
+            const adminUser = parent.users['user/' + domain.id + '/' + domain.orphanagentuser];
             if ((adminUser != null) && (adminUser.siteadmin == 0xFFFFFFFF)) {
                 // Mesh name is hex instead of base64
                 const meshname = obj.meshid.substring(0, 18);
@@ -807,7 +807,12 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
                 if (device.agent.ver != obj.agentInfo.agentVersion) { device.agent.ver = obj.agentInfo.agentVersion; change = 1; changes.push('agent version'); }
                 if (device.agent.id != obj.agentInfo.agentId) { device.agent.id = obj.agentInfo.agentId; change = 1; changes.push('agent type'); }
                 if ((device.agent.caps & 24) != (obj.agentInfo.capabilities & 24)) { device.agent.caps = obj.agentInfo.capabilities; change = 1; changes.push('agent capabilities'); } // If agent console or javascript support changes, update capabilities
-                if (mesh.flags && (mesh.flags & 2) && (device.name != obj.agentInfo.computerName)) { device.name = obj.agentInfo.computerName; change = 1; } // We want the server name to be sync'ed to the hostname
+                // We want the server name to be sync'ed to the hostname or the --agentName
+                // (flag 16 allows to override the name until next connection)
+                if (mesh.flags && (mesh.flags & 2)) {
+                    var preferredName = (mesh.flags & 8) && obj.agentName || obj.agentInfo.computerName;
+                    if (device.name != preferredName) {device.name = preferredName; change = 1; }
+                }
                 if (device.ip != obj.remoteaddr) { device.ip = obj.remoteaddr; change = 1; }
 
                 if (change == 1) {
@@ -1058,7 +1063,7 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
             db.Get('iploc_' + obj.remoteaddr, function (err, iplocs) {
                 if ((iplocs != null) && (iplocs.length == 1)) {
                     // We have a location in the database for this remote IP
-                    const iploc = nodes[0], x = {};
+                    const iploc = iplocs[0], x = {};
                     if ((iploc != null) && (iploc.ip != null) && (iploc.loc != null)) {
                         x.publicip = iploc.ip;
                         x.iploc = iploc.loc + ',' + (Math.floor((new Date(iploc.date)) / 1000));
@@ -1067,10 +1072,10 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
                 } else {
                     // Check if we need to ask for the IP location
                     var doIpLocation = 0;
-                    if (device.iploc == null) {
+                    if (obj.iploc == null) {
                         doIpLocation = 1;
                     } else {
-                        const loc = device.iploc.split(',');
+                        const loc = obj.iploc.split(',');
                         if (loc.length < 3) {
                             doIpLocation = 2;
                         } else {
@@ -1924,6 +1929,10 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
                     if (!device.defender) { device.defender = {}; }
                     if (JSON.stringify(device.defender) != JSON.stringify(command.defender)) { /*changes.push('Defender status');*/ device.defender = command.defender; change = 1; log = 1; }
                 }
+                if (command.lastbootuptime != null) { // Last Boot Up Time
+                    if (!device.lastbootuptime) { device.lastbootuptime = ""; }
+                    if (device.lastbootuptime != command.lastbootuptime) { /*changes.push('Last Boot Up Time');*/ device.lastbootuptime = command.lastbootuptime; change = 1; log = 1; }
+                }
 
                 // Push Messaging Token
                 if ((command.pmt != null) && (typeof command.pmt == 'string') && (device.pmt != command.pmt)) {
@@ -1932,8 +1941,9 @@ module.exports.CreateMeshAgent = function (parent, db, ws, req, args, domain) {
                     change = 1; // Don't save this change as an event to the db, so no log=1.
                     parent.removePmtFromAllOtherNodes(device); // We need to make sure to remove this push messaging token from any other device on this server, all domains included.
                 }
-
+                
                 if ((command.users != null) && (Array.isArray(command.users)) && (device.users != command.users)) { device.users = command.users; change = 1; } // Don't save this to the db.
+                if ((command.lusers != null) && (Array.isArray(command.lusers)) && (device.lusers != command.lusers)) { device.lusers = command.lusers; change = 1; } // Don't save this to the db.
                 if ((mesh.mtype == 2) && (!args.wanonly)) {
                     // In WAN mode, the hostname of a computer is not important. Don't log hostname changes.
                     if (device.host != obj.remoteaddr) { device.host = obj.remoteaddr; change = 1; changes.push('host'); }

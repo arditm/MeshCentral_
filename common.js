@@ -155,12 +155,12 @@ module.exports.objKeysToLower = function (obj, exceptions, parent) {
     return obj;
 };
 
-// Escape and unescape field names so there are no invalid characters for MongoDB
-module.exports.escapeFieldName = function (name) { if ((name.indexOf('%') == -1) && (name.indexOf('.') == -1) && (name.indexOf('$') == -1)) return name; return name.split('%').join('%25').split('.').join('%2E').split('$').join('%24'); };
-module.exports.unEscapeFieldName = function (name) { if (name.indexOf('%') == -1) return name; return name.split('%2E').join('.').split('%24').join('$').split('%25').join('%'); };
+// Escape and unescape field names so there are no invalid characters for MongoDB/NeDB ("$", ",", ".", see https://github.com/seald/nedb/tree/master?tab=readme-ov-file#inserting-documents)
+module.exports.escapeFieldName = function (name) { if ((name.indexOf(',') == -1) && (name.indexOf('%') == -1) && (name.indexOf('.') == -1) && (name.indexOf('$') == -1)) return name; return name.split('%').join('%25').split('.').join('%2E').split('$').join('%24').split(',').join('%2C'); };
+module.exports.unEscapeFieldName = function (name) { if (name.indexOf('%') == -1) return name; return name.split('%2C').join(',').split('%2E').join('.').split('%24').join('$').split('%25').join('%'); };
 
 // Escape all links, SSH and RDP usernames
-// This is required for databases like NeDB that don't accept "." as part of a field name.
+// This is required for databases like NeDB that don't accept "." or "," as part of a field name.
 module.exports.escapeLinksFieldNameEx = function (docx) { if ((docx.links == null) && (docx.ssh == null) && (docx.rdp == null)) { return docx; } return module.exports.escapeLinksFieldName(docx); };
 module.exports.escapeLinksFieldName = function (docx) {
     var doc = Object.assign({}, docx);
@@ -334,6 +334,11 @@ module.exports.meshServerRightsArrayToNumber = function (val) {
             if (r == 'locked') { newAccRights |= 32; }
             if (r == 'nonewgroups') { newAccRights |= 64; }
             if (r == 'notools') { newAccRights |= 128; }
+            if (r == 'usergroups') { newAccRights |= 256; }
+            if (r == 'recordings') { newAccRights |= 512; }
+            if (r == 'locksettings') { newAccRights |= 1024; }
+            if (r == 'allevents') { newAccRights |= 2048; }
+            if (r == 'nonewdevices') { newAccRights |= 4096; }
         }
         return newAccRights;
     }
@@ -399,4 +404,34 @@ module.exports.convertStrArray = function (object, split) {
     } else {
         return []
     }
+}
+
+module.exports.uniqueArray = function (a) {
+    var seen = {};
+    var out = [];
+    var len = a.length;
+    var j = 0;
+    for(var i = 0; i < len; i++) {
+         var item = a[i];
+         if(seen[item] !== 1) {
+               seen[item] = 1;
+               out[j++] = item;
+         }
+    }
+    return out;
+}
+
+// Replace placeholders in a string with values from an object or a function 
+module.exports.replacePlaceholders = function (template, values) {
+  return template.replace(/\{(\w+)\}/g, (match, key) => {
+    if (typeof values === 'function') {
+      return values(key);
+    }
+    else if (values && typeof values === 'object') {
+      return values[key] !== undefined ? values[key] : match;
+    }
+    else {
+      return values !== undefined ? values : match;
+    }
+  });
 }

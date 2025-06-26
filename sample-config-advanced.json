@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/Ylianst/MeshCentral/master/meshcentral-config-schema.json",
-  "__comment__": "This is a sample configuration file, all values and sections that start with underscore (_) are ignored. Edit a section and remove the _ in front of the name. Refer to the user's guide for details.",
+  "__comment__": "This is a sample advanced configuration file, all values and sections that start with underscore (_) are ignored. Edit a section and remove the _ in front of the name. Refer to the user's guide for details.",
   "settings": {
-    "_cert": "myserver.mydomain.com",
+    "cert": "myserver.mydomain.com",
     "_SQLite3": true,
     "_acebase": { "_sponsor": true },
     "_mongoDb": "mongodb://127.0.0.1:27017",
@@ -65,7 +65,7 @@
     "_agentIdleTimeout": 150,
     "_webPageLengthRandomization": false,
     "_compression": true,
-    "_wsCompression": false,
+    "_wsCompression": true,
     "_agentWsCompression": true,
     "_noAgentUpdate": 1,
     "_agentUpdateSystem": 1,
@@ -106,32 +106,43 @@
     "_runOnServerUpdated": "c:\\tmp\\mcupdate.bat",
     "_runOnServerError": "c:\\tmp\\mcerror.bat",
     "_log": "main,web,webrequest,cert",
+    "_debug": "main,web,webrequest,cert",
     "_syslog": "meshcentral",
     "_syslogauth": "meshcentral-auth",
     "_syslogjson": "meshcentral-json",
     "_syslogtcp": "localhost:514",
     "_webrtcConfig": {
       "iceServers": [
-        { "urls": "stun:stun.services.mozilla.com" },
+        { "urls": "stun:stun.cloudflare.com:3478" },
         { "urls": "stun:stun.l.google.com:19302" }
       ]
     },
     "_autoBackup": {
       "_mongoDumpPath": "C:\\Program Files\\MongoDB\\Server\\4.2\\bin\\mongodump.exe",
-      "backupIntervalHours": 24,
-      "keepLastDaysBackup": 10,
-      "zipPassword": "MyReallySecretPassword3",
+      "_backupIntervalHours": 24,
+      "_keepLastDaysBackup": 10,
+      "_zipPassword": "MyReallySecretPassword3",
       "_backupPath": "C:\\backups",
       "_googleDrive": {
         "folderName": "MeshCentral-Backups",
         "maxFiles": 10
       },
-      "webdav": {
+      "_webdav": {
         "url": "https://server/remote.php/dav/files/xxxxx@server.com/",
         "username": "user",
         "password": "pass",
         "folderName": "MeshCentral-Backups",
         "maxFiles": 10
+      },
+      "_s3": {
+        "accessKey": "MYLONGACCESSKEY",
+        "secretKey": "MYLONGSECRETKEY",
+        "endpoint": "myS3.myserver.com",
+        "port": 9000,
+        "ssl": false,
+        "bucketName": "test",
+        "folderName": "MeshCentral-Backups",
+        "maxfiles": 10
       }
     },
     "_redirects": {
@@ -149,7 +160,7 @@
       "count": 10,
       "coolofftime": 10
     },
-    "watchDog": {
+    "_watchDog": {
       "interval": 100,
       "timeout": 400
     },
@@ -168,17 +179,19 @@
   },
   "_domaindefaults": {
     "__comment__": "Any settings in this section is used as default setting for all domains",
-    "title": "MyDefaultTitle",
-    "footer": "Default page footer",
-    "newAccounts": false
+    "_title": "MyDefaultTitle",
+    "_footer": "Default page footer",
+    "_newAccounts": false
   },
   "domains": {
     "": {
       "_siteStyle": 2,
-      "title": "MyServer",
-      "title2": "Servername",
+      "_showModernUIToggle": true,
+      "_title": "MyServer",
+      "_title2": "Servername",
       "_titlePicture": "title-sample.png",
       "_loginPicture": "title-sample.png",
+      "_pwaLogo": "title-sample.png",
       "_rootRedirect": "https://www.youtube.com/watch?v=Gs069dndIYk",
       "_mobileSite": false,
       "_maxDeviceView": 1000,
@@ -190,11 +203,13 @@
       "_loginKey": [ "abc", "123" ],
       "_agentKey": [ "abc", "123" ],
       "_ipkvm": false,
-      "minify": true,
+      "_minify": true,
       "_hidePowerTimeline": true,
       "_showNotesPanel": true,
+      "_userSessionsSort": "Username",
       "_newAccounts": true,
       "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+      "_manageAllDeviceGroups": [ "admin" ],
       "_userNameIsEmail": true,
       "_newAccountEmailDomains": [ "sample.com" ],
       "_newAccountsRights": [ "nonewgroups", "notools" ],
@@ -249,7 +264,7 @@
         ]
       },
       "_assistantTypeAgentInvite": 2,
-      "PreconfiguredScripts": [
+      "_PreconfiguredScripts": [
         {
           "name": "Run NotePad as user",
           "file": "scripts/notepad.bat",
@@ -274,7 +289,7 @@
           "type": "agent"
         }
       ],
-      "PreconfiguredRemoteInput": [
+      "_PreconfiguredRemoteInput": [
         {
           "name": "CompanyUrl",
           "value": "https://help.mycompany.com/"
@@ -288,7 +303,7 @@
           "value": "Default welcome text"
         }
       ],
-      "myServer": {
+      "_myServer": {
         "Backup": false,
         "Restore": false,
         "Upgrade": false,
@@ -309,15 +324,17 @@
         "skip2factor": "127.0.0.1,192.168.2.0/24",
         "oldPasswordBan": 5,
         "banCommonPasswords": false,
-        "twoFactorTimeout": 300
+        "twoFactorTimeout": 300,
+        "duo2factor": true
       },
       "_twoFactorCookieDurationDays": 30,
       "_agentInviteCodes": true,
       "_agentNoProxy": true,
       "_lockAgentDownload": true, 
       "_geoLocation": true,
+      "_ipLocation": true,
       "_novnc": false,
-      "_mstsc": true,
+      "_mstsc": false,
       "_ssh": true,
       "_WebEmailsPath": "/myserver/email-templates",
       "_consentMessages": {
@@ -326,7 +343,9 @@
         "terminal": "{0} requesting remote terminal access. Grant access?",
         "files": "{0} requesting remote files access. Grant access?",
         "consentTimeout": 30,
-        "autoAcceptOnTimeout": false
+        "autoAcceptOnTimeout": false,
+        "autoAcceptIfNoUser": false,
+        "oldStyle": true
       },
       "_notificationMessages": {
         "title": "MeshCentral",
@@ -368,7 +387,9 @@
       "_agentBlockedIP": "127.0.0.1,::1",
       "___userSessionIdleTimeout__": "Number of user idle minutes before auto-disconnect",
       "_userSessionIdleTimeout": 30,
-      "userConsentFlags": {
+      "___logoutOnIdleSessionTimeout": "Determines whether MeshCentral should logout after the session idle timeout elapsed or should just disconnect remote desktop, terminal and files.",
+      "_logoutOnIdleSessionTimeout": false,
+      "_userConsentFlags": {
         "desktopnotify": true,
         "terminalnotify": true,
         "filenotify": true,
@@ -439,6 +460,11 @@
       "_redirects": {
         "meshcommander": "https://www.meshcommander.com/"
       },
+      "_duo2factor": {
+        "integrationkey": "mykey",
+        "secretkey": "mysecret",
+        "apihostname": "api-xxxxxxxxxxx.duosecurity.com"
+      },
       "_yubikey": {
         "id": "0000",
         "secret": "xxxxxxxxxxxxxxxxxxxxx",
@@ -468,6 +494,7 @@
           "_callbackurl": "https://server/auth-twitter-callback",
           "newAccounts": true,
           "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
           "clientid": "xxxxxxxxxxxxxxxxxxxxxxx",
           "clientsecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         },
@@ -475,6 +502,7 @@
           "_callbackurl": "https://server/auth-google-callback",
           "newAccounts": true,
           "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
           "clientid": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx.apps.googleusercontent.com",
           "clientsecret": "xxxxxxxxxxxxxxxxxxxxxxx"
         },
@@ -482,6 +510,7 @@
           "_callbackurl": "https://server/auth-github-callback",
           "newAccounts": true,
           "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
           "clientid": "xxxxxxxxxxxxxxxxxxxxxxx",
           "clientsecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
         },
@@ -489,6 +518,7 @@
           "_callbackurl": "https://server/auth-azure-callback",
           "newAccounts": true,
           "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
           "clientid": "00000000-0000-0000-0000-000000000000",
           "clientsecret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",
           "tenantid": "00000000-0000-0000-0000-000000000000"
@@ -497,6 +527,7 @@
           "_callbackurl": "https://server/auth-jumpcloud-callback",
           "newAccounts": true,
           "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ],
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
           "entityid": "meshcentral",
           "idpurl": "https://sso.jumpcloud.com/saml2/saml2",
           "cert": "jumpcloud-saml.pem"
@@ -528,7 +559,10 @@
               "filter": [ "groupB", "groupC" ]
             }
           },
-          "newAccounts": true
+          "newAccounts": true,
+          "_newAccountsRights": [ "nonewgroups", "notools" ],
+          "_newAccountsUserGroups": [ "ugrp//xxxxxxxxxxxxxxxxx" ]
+
         }
       }
     },
@@ -565,7 +599,11 @@
     "email": "myemail@myserver.com",
     "names": "myserver.com,customer1.myserver.com",
     "skipChallengeVerification": false,
-    "production": false
+    "production": false,
+    "zerossl": {
+      "kid": "a1b2c3d4e5",
+      "hmacKey": "a1b2c3d4e5"
+    }
   },
   "_peers": {
     "serverId": "server1",

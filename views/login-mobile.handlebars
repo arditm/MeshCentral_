@@ -63,15 +63,15 @@
                                     <table>
                                         <tr>
                                             <td id=loginusername align=right width=100>Username:</td>
-                                            <td><input id=username type=text autocomplete="username" maxlength=64 name=username onchange=validateLogin(1) onkeyup=validateLogin(1,event) /></td>
+                                            <td><input id=username type=text autocomplete="username" maxlength=64 name=username required onchange=validateLogin(1) onkeyup=validateLogin(1,event)  /></td>
                                         </tr>
                                         <tr>
                                             <td align=right>Password:</td>
-                                            <td><input id=password type=password autocomplete="current-password" maxlength=256 name=password autocomplete=off onchange=validateLogin(2) onkeyup=validateLogin(2,event) /></td>
+                                            <td><input id=password type=password autocomplete="current-password" maxlength=256 name=password autocomplete=off required onchange=validateLogin(2) onkeyup=validateLogin(2,event)  /></td>
                                         </tr>
                                         <tr>
                                             <td><div id=showPassHintLink style=display:none><a onclick=showPassHint() style="cursor:pointer">Show Hint</a></div></td>
-                                            <td align=right><input id=loginButton type=submit value="Log In" disabled="disabled" /></td>
+                                            <td align=right><input id=loginButton type=submit value="Log In" /></td>
                                         </tr>
                                     </table>
                                     <div id="hrAccountDiv" style="display:none"><hr /></div>
@@ -356,6 +356,19 @@
             }
         }
 
+        // Display flash error Messages
+        var flashErrors = JSON.parse('{{{flashErrors}}}');
+        if (flashErrors && (flashErrors.length > 0)) {
+            var msg = '';
+            for (i = 0; i < flashErrors.length; i++) {
+                if (flashErrors[i]) {
+                    msg += '<span class="msg error"><b style=color:#8C001A>' + flashErrors[i] + '<b></span><br /><br />';
+                }
+            }
+            QH('message1', msg);
+            QV('message1', true);
+        }
+
         // If URL arguments are provided, add them to form posts
         if (window.location.href.indexOf('?') > 0) {
             var urlargs = window.location.href.substring(window.location.href.indexOf('?'));
@@ -409,7 +422,6 @@
 
             window.onresize = center;
             center();
-            validateLogin();
             validateCreate();
             if (loginMode.length != 0) { go(parseInt(loginMode)); } else { go(1); }
             QV('newAccountDiv', (newAccount === '1') || (newAccount === 'true')); // If new accounts are not allowed, don't display the new account link.
@@ -561,12 +573,13 @@
         }
 
         function validateLogin(box, e) {
-            var ok = ((Q('username').value.length > 0) && (Q('username').value.indexOf(' ') == -1) && (Q('password').value.length > 0));
-            QE('loginButton', ok);
-            setDialogMode(0);
-            if ((e != null) && (e.keyCode == 13)) { if (box == 1) { Q('password').focus(); } else if (box == 2) { Q('loginButton').click(); } }
-            if (e != null) { haltEvent(e); }
+            setTimeout(function(){
+                setDialogMode(0);
+                if ((e != null) && (e.keyCode == 13)) { if (box == 1) { Q('password').focus(); } else if (box == 2) { Q('loginButton').click(); } }
+                if (e != null) { haltEvent(e); }
+            }, 100);
         }
+
 
         function validateCreate(box,e) {
             setDialogMode(0);

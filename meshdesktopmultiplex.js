@@ -697,7 +697,7 @@ function CreateDesktopMultiplexor(parent, domain, nodeid, id, func) {
             case 3: // Tile, check dimentions and store
                 if ((data.length < 10) || (obj.lastData == null)) break;
                 var x = data.readUInt16BE(4), y = data.readUInt16BE(6);
-                var dimensions = require('image-size')(data.slice(8));
+                var dimensions = require('image-size').imageSize(data.slice(8));
                 var sx = (x / 16), sy = (y / 16), sw = (dimensions.width / 16), sh = (dimensions.height / 16);
                 obj.counter++;
                 
@@ -847,7 +847,7 @@ function CreateDesktopMultiplexor(parent, domain, nodeid, id, func) {
                 return;
             }
             // Write the recording file header
-            parent.parent.debug('relay', 'Relay: Started recoding to file: ' + recFullFilename);
+            parent.parent.debug('relay', 'Relay: Started recording to file: ' + recFullFilename);
             var metadata = { magic: 'MeshCentralRelaySession', ver: 1, nodeid: obj.nodeid, meshid: obj.meshid, time: new Date().toLocaleString(), protocol: 2, devicename: obj.name, devicegroup: obj.meshname };
             var firstBlock = JSON.stringify(metadata);
             recordingEntry(fd, 1, 0, firstBlock, function () {
@@ -1347,6 +1347,8 @@ function CreateMeshRelayEx2(parent, ws, req, domain, user, cookie) {
                     if (typeof domain.consentmessages.files == 'string') { command.soptions.consentMsgFiles = domain.consentmessages.files; }
                     if ((typeof domain.consentmessages.consenttimeout == 'number') && (domain.consentmessages.consenttimeout > 0)) { command.soptions.consentTimeout = domain.consentmessages.consenttimeout; }
                     if (domain.consentmessages.autoacceptontimeout === true) { command.soptions.consentAutoAccept = true; }
+                    if (domain.consentmessages.autoacceptifnouser === true) { command.soptions.consentAutoAcceptIfNoUser = true; }
+                    if (domain.consentmessages.oldstyle === true) { command.soptions.oldStyle = true; }
                 }
                 if (typeof domain.notificationmessages == 'object') {
                     if (typeof domain.notificationmessages.title == 'string') { command.soptions.notifyTitle = domain.notificationmessages.title; }

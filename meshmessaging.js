@@ -352,9 +352,9 @@ module.exports.CreateServer = function (parent) {
             push.send(domain.title ? domain.title : 'MeshCentral', msg, function (err, res) { if (func != null) { func(err == null); } });
         } else if ((to.startsWith('ntfy:')) && (obj.ntfyClient != null)) { // ntfy
             const url = 'https://' + (((typeof parent.config.messaging.ntfy == 'object') && (typeof parent.config.messaging.ntfy.host == 'string')) ? parent.config.messaging.ntfy.host : 'ntfy.sh') + '/' + encodeURIComponent(to.substring(5));
-            const headers = (typeof parent.config.messaging.ntfy.authorization  == 'string') ? { 'Authorization': parent.config.messaging.ntfy.authorization } : {};
-            const req = require('https').request(new URL(url), { method: 'POST', headers: headers }, function (res) { if (func != null) { func(true); } });
-            req.on('error', function (err) { if (func != null) { func(false); } });
+            const headers = { 'User-Agent': 'MeshCentral v' + parent.currentVer };
+            if (typeof parent.config.messaging.ntfy.authorization  == 'string') { headers['Authorization'] = parent.config.messaging.ntfy.authorization; }
+            const req = require('https').request(new URL(url), { method: 'POST', headers: headers }, function (res) { if (func != null) { func(res.statusCode == 200); } });
             req.end(msg);
         } else if ((to.startsWith('zulip:')) && (obj.zulipClient != null)) { // zulip
             obj.zulipClient.sendMessage({
@@ -397,6 +397,7 @@ module.exports.CreateServer = function (parent) {
     function getTemplate(templateNumber, domain, lang) {
         parent.debug('email', 'Getting SMS template #' + templateNumber + ', lang: ' + lang);
         if (Array.isArray(lang)) { lang = lang[0]; } // TODO: For now, we only use the first language given.
+        if (lang != null) { lang = lang.split('-')[0]; } // Take the first part of the language, "xx-xx"
 
         var r = {}, emailsPath = null;
         if ((domain != null) && (domain.webemailspath != null)) { emailsPath = domain.webemailspath; }
@@ -404,7 +405,7 @@ module.exports.CreateServer = function (parent) {
         else if (obj.parent.webEmailsPath != null) { emailsPath = obj.parent.webEmailsPath; }
         if ((emailsPath == null) || (obj.parent.fs.existsSync(emailsPath) == false)) { return null }
 
-        // Get the non-english email if needed
+        // Get the non-english sms if needed
         var txtfile = null;
         if ((lang != null) && (lang != 'en')) {
             var translationsPath = obj.parent.path.join(emailsPath, 'translations');
@@ -414,9 +415,26 @@ module.exports.CreateServer = function (parent) {
             }
         }
 
-        // Get the english email
+        // Get the english sms
         if (txtfile == null) {
             var pathTxt = obj.parent.path.join(emailsPath, 'sms-messages.txt');
+            if (obj.parent.fs.existsSync(pathTxt)) {
+                txtfile = obj.parent.fs.readFileSync(pathTxt).toString();
+            }
+        }
+
+        // If no english sms and a non-english language is requested, try to get the default translated sms
+        if (txtfile == null && (lang != null) && (lang != 'en')) {
+            var translationsPath = obj.parent.path.join(obj.parent.webEmailsPath, 'translations');
+            var translationsPathTxt = obj.parent.path.join(obj.parent.webEmailsPath, 'translations', 'sms-messages_' + lang + '.txt');
+            if (obj.parent.fs.existsSync(translationsPath) && obj.parent.fs.existsSync(translationsPathTxt)) {
+                txtfile = obj.parent.fs.readFileSync(translationsPathTxt).toString();
+            }
+        }   
+
+        // If no default translated sms, try to get the default english sms
+        if (txtfile == null) {
+            var pathTxt = obj.parent.path.join(obj.parent.webEmailsPath, 'sms-messages.txt');
             if (obj.parent.fs.existsSync(pathTxt)) {
                 txtfile = obj.parent.fs.readFileSync(pathTxt).toString();
             }

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8">
@@ -674,6 +674,23 @@
         .night .tagSpan {
             color: black;
         }
+
+        #d3serveraction, #d2serveraction {
+            width: 100%;
+            background-color: #d3d9d6;
+            text-align: left;
+            padding: 3px;
+        }
+
+        #d3serverfiles, #d2serverfiles {
+            width: 100%;
+            height: 150px;
+            background-color: white;
+            padding: 2px;
+            border: 1px solid gray;
+            overflow-y: scroll;
+        }
+
     </style>
 </head>
 <body id="body" onload="if (typeof(startup) !== 'undefined') startup();" style="overflow-y:hidden;margin:0;padding:0;border:0;font-size:13px;font-family:\'Trebuchet MS\', Arial, Helvetica, sans-serif">
@@ -746,17 +763,19 @@
                                         <div style="margin-top:5px"><a href=# onclick="account_showLocalizationSettings()">Localization Settings</a></div>
                                         <div id="manageAuthApp" style="margin-top:5px;display:none"><a onclick="account_manageAuthApp()" style="cursor:pointer">Manage authenticator app</a> <span id="authAppSetupCheck"><strong>&#x2713;</strong></span></div>
                                         <div id="manageOtp" style="margin-top:5px;display:none"><a onclick="account_manageOtp(0)" style="cursor:pointer">Manage backup codes</a> <span id="authCodesSetupCheck"><strong>&#x2713;</strong></span></div>
-                                        <div style="margin-top:5px"><a href=# onclick="return account_viewPreviousLogins()">View previous logins</a></div>
                                     </div>
                                 </div>
                                 <div id="p2AccountActions" style="display:none">
                                     <p><strong>Account Actions</strong></p>
                                     <div style="margin-left:9px;margin-bottom:8px">
+                                        <div style="margin-top:5px"><span id="viewPreviousLogins"><a onclick="return account_viewPreviousLogins()" style="cursor:pointer">View previous logins</a></span></div>
                                         <div style="margin-top:5px"><span id="managePhoneNumber2" style="display:none"><a onclick="account_managePhone()" style="cursor:pointer">Manage phone number</a></span></div>
                                         <div style="margin-top:5px"><span id="verifyEmailId" style="display:none"><a onclick="account_showVerifyEmail()" style="cursor:pointer">Verify email</a></span></div>
-                                        <div style="margin-top:5px"><span id="changeEmailId" style="display:none"><a onclick="account_showChangeEmail()" style="cursor:pointer">Change email address</a></span></div>
-                                        <div style="margin-top:5px"><a onclick="account_showChangePassword()" style="cursor:pointer">Change password</a><span id="p2nextPasswordUpdateTime"></span></div>
-                                        <div style="margin-top:5px"><a onclick="account_showDeleteAccount()" style="cursor:pointer">Delete account</a></div>
+                                        <span id="p2AccountPassActions">
+                                            <div style="margin-top:5px"><span id="changeEmailId" style="display:none"><a onclick="account_showChangeEmail()" style="cursor:pointer">Change email address</a></span></div>
+                                            <div style="margin-top:5px"><a onclick="account_showChangePassword()" style="cursor:pointer">Change password</a><span id="p2nextPasswordUpdateTime"></span></div>
+                                            <div style="margin-top:5px"><a onclick="account_showDeleteAccount()" style="cursor:pointer">Delete account</a></div>
+                                        </span>
                                         <div style="margin-top:5px" id="setDarkModeLink"><a onclick="toggleNightMode()" style="cursor:pointer">Set dark mode</a></div>
                                         <div style="margin-top:5px"><a onclick="showNotes(false)" style="cursor:pointer">Personal notes</a></div>
                                     </div>
@@ -872,6 +891,7 @@
                             <div style=width:100%;margin:6px></div>
                         </div>
                         <div style="margin-right:16px;margin-left:8px"><div id=p10dialog2 style="margin:auto;margin:3px"></div></div>
+                        <div style="width:100%;padding:2px;text-align:center"><input type=button value="Restore Default Keyboard Shortcuts" onclick=restoreDeskCustomizeKey() /></div>
                         <div style="padding:10px;margin-bottom:20px"><input type="button" value="OK" style="float:right;width:80px" onclick="deskCustomizeKeysEx()"></div>
                     </div>
                     <div id=p10general style="overflow-y:scroll;position:absolute;top:55px;bottom:0px;width:100%">
@@ -923,9 +943,12 @@
                         </div>
                         <div id=deskarea4 style="position:absolute;bottom:0px;width:100%;height:32px">
                             <div style=padding-top:2px;padding-bottom:2px;background:#C0C0C0>
-                                <div style=float:right;text-align:right>
+                                <div style=float:right;text-align:right;padding-right:2px>
+                                    <span id=DeskLockButton><img src='images/icon-lock.png' onclick=deviceLockFunction() height=16 width=16 style=padding-top:5px;cursor:pointer /></span>
                                     <span id=DeskChatButton><img src='images/icon-chat.png' onclick=deviceChat(event) height=16 width=16 style=padding-top:5px;cursor:pointer /></span>&nbsp;
                                     <span id=DeskToastButton><img src='images/icon-notify.png' onclick=deviceToastFunction() height=16 width=16 style=padding-top:5px;cursor:pointer /></span>&nbsp;
+                                    <span id=DeskOpenWebButton><img src='images/icon-url2.png' onclick=deviceUrlFunction() height=16 width=16 style=padding-top:5px;cursor:pointer /></span>&nbsp;
+                                    <span id=DeskRunButton><img src='images/icon-play.png' onclick=runDeviceCmd() height=16 width=16 style=padding-top:5px;cursor:pointer /></span>
                                     <!--<input id=DeskToolsButton type=button value=Tools onkeypress="return false" onkeydown="return false" onclick="toggleDeskTools()">&nbsp;-->
                                 </div>
                                 <div>
@@ -966,6 +989,9 @@
                                     <div class="toright2"></div>
                                     <div style="height:28px">
                                         <input id="termActionsBtn" style="margin-left:3px;height:28px" type=button title="Perform power actions on the device" onkeypress="return false" onkeydown="return false" value=Actions onclick=deviceActionFunction() />
+                                        <input id="ctrlcbutton" style="margin-left:3px;height:28px" type=button onkeypress="return false" onkeydown="return false" value="Ctl-C" onclick="termSendKey(3,'ctrlcbutton')" />
+                                        <input id="ctrlxbutton" style="margin-left:3px;height:28px" type=button onkeypress="return false" onkeydown="return false" value="Ctl-X" onclick="termSendKey(24,'ctrlxbutton')" />
+                                        <input id="escbutton" style="margin-left:3px;height:28px" type=button onkeypress="return false" onkeydown="return false" value="ESC" onclick="termSendKey(27,'escbutton')" />
                                     </div>
                                 </div>
                             </div>
@@ -1139,6 +1165,31 @@
                     <option value=12>Shift-F10</option>
                 </select>
             </div>
+            <div id=dialog4 style="margin:auto;margin:3px">
+                <div id=d3upload>
+                    <div>File Selection</div>
+                    <select id=d3uploadMode onchange=d3modechange()>
+                        <option value=1>Local file upload</option>
+                        <option value=2>Server file selection</option>
+                    </select>
+                </div>
+                <div id=d3localmode style="display:none">
+                    <div>Upload File</div>
+                    <form id=d3localmodeform method=post enctype=multipart/form-data action=uploadfile.ashx target=fileUploadFrame>
+                        <input type=text id=d3auth name=auth style="display:none" />
+                        <input type=text id=d3filter name=filter style="display:none" />
+                        <input type=text id=d3attrib name=attrib style="display:none" />
+                        <input type=file id=d3localFile name=files onchange=d3setActions() />
+                        <input type=submit id=d3submit style="display:none" />
+                    </form>
+                </div>
+                <div id=d3servermode>
+                    <div id=d3serveraction valign=bottom>
+                        <input type=button id=p3FolderUp disabled="disabled" onclick=d3folderup() value="Up" />&nbsp;<span id=p3CurrentFolder></span>
+                    </div>
+                    <div id=d3serverfiles></div>
+                </div>
+            </div>
             <div id=dialog7 style="margin:auto;margin:3px">
                 <div id="d7meshkvm">
                     <h4 style="width:100%;border-bottom:1px solid gray">Agent Remote Desktop</h4>
@@ -1178,6 +1229,19 @@
                                     <option value=100>Medium</option>
                                     <option value=400>Slow</option>
                                     <option value=1000>Very slow</option>
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>
+                                Encoding
+                            </td>
+                            <td style="width:100px">
+                                <select id="d7encoding" style="float:right;width:200px" dir="rtl">
+                                    <option value=1>JPEG</option>
+                                    <option value=2>PNG</option>
+                                    <option value=3>TIFF</option>
+                                    <option selected=selected value=4>WEBP</option>
                                 </select>
                             </td>
                         </tr>
@@ -1240,6 +1304,7 @@
         delete urlargs.viewmode;
         delete urlargs.gotonode;
         delete urlargs.gotodevicename;
+        delete urlargs.gotodeviceip;
         delete urlargs.gotomesh;
         delete urlargs.panel;
 
@@ -1260,7 +1325,7 @@
         var logoutControls = JSON.parse(decodeURIComponent('{{{logoutControls}}}'));
         var authCookieRenewTimer = null;
         var webRelayPort = parseInt('{{{webRelayPort}}}');
-        var hidePowerTimeline = {{{hidePowerTimeline}}};
+        var hidePowerTimeline = '{{{hidePowerTimeline}}}';
         var webRelayDns = '{{{webRelayDns}}}';
         var meshserver = null;
         var xdr = null;
@@ -1277,8 +1342,10 @@
         var serverPublicNamePort = '{{{serverDnsName}}}:{{{serverPublicPort}}}';
         var debugmode = false;
         var attemptWebRTC = ((features & 128) != 0);
+        var webrtcconfiguration = '{{{webrtcconfig}}}';
+        if (webrtcconfiguration == '') { webrtcconfiguration = null; } else { try { webrtcconfiguration = JSON.parse(decodeURIComponent(webrtcconfiguration)); } catch (ex) { console.log('Invalid WebRTC config: "' + webrtcconfiguration + '".'); webrtcconfiguration = null; } }
         var StatusStrs = ["Disconnected", "Connecting...", "Setup...", "Connected", "Intel&reg; AMT Connected"];
-        var agentsStr = ["Unknown", "Windows 32bit console", "Windows 64bit console", "Windows 32bit service", "Windows 64bit service", "Linux 32bit", "Linux 64bit", "MIPS", "XENx86", "Android ARM", "Linux ARM", "macOS x86-32bit", "Android x86", "PogoPlug ARM", "Android", "Linux Poky x86-32bit", "macOS x86-64bit", "ChromeOS", "Linux Poky x86-64bit", "Linux NoKVM x86-32bit", "Linux NoKVM x86-64bit", "Windows MinCore console", "Windows MinCore service", "NodeJS", "ARM-Linaro", "ARMv6l / ARMv7l", "ARMv8 64bit", "ARMv6l / ARMv7l / NoKVM", "MIPS24KC (OpenWRT)", "Apple Silicon", "FreeBSD x86-64", "Unknown", "Linux ARM 64 bit (glibc/2.24 NOKVM)", "Alpine Linux x86 64 Bit (MUSL)", "Assistant (Windows)", "Armada370 - ARM32/HF (libc/2.26)", "OpenWRT x86-64", "OpenBSD x86-64", "Unknown", "Unknown", "MIPSEL24KC (OpenWRT)", "ARMADA/CORTEX-A53/MUSL (OpenWRT)", "Windows ARM 64bit console", "Windows ARM 64bit service"];
+        var agentsStr = ["Unknown", "Windows 32bit console", "Windows 64bit console", "Windows 32bit service", "Windows 64bit service", "Linux 32bit", "Linux 64bit", "MIPS", "XENx86", "Android", "Linux ARM", "macOS x86-32bit", "Android x86", "PogoPlug ARM", "Android", "Linux Poky x86-32bit", "macOS x86-64bit", "ChromeOS", "Linux Poky x86-64bit", "Linux NoKVM x86-32bit", "Linux NoKVM x86-64bit", "Windows MinCore console", "Windows MinCore service", "NodeJS", "ARM-Linaro", "ARMv6l / ARMv7l", "ARMv8 64bit", "ARMv6l / ARMv7l / NoKVM", "MIPS24KC (OpenWRT)", "Apple Silicon", "FreeBSD x86-64", "Unknown", "Linux ARM 64 bit (glibc/2.24 NOKVM)", "Alpine Linux x86 64 Bit (MUSL)", "Assistant (Windows)", "Armada370 - ARM32/HF (libc/2.26)", "OpenWRT x86-64", "OpenBSD x86-64", "Unknown", "Unknown", "MIPSEL24KC (OpenWRT)", "ARMADA/CORTEX-A53/MUSL (OpenWRT)", "Windows ARM 64bit console", "Windows ARM 64bit service", "ARMVIRT32 (OpenWRT)", "RISC-V x86-64"];
         var files;
         var terminal;
         var passRequirements = '{{{passRequirements}}}';
@@ -1299,7 +1366,13 @@
 
         // Check if WebP is supported
         var webpSupport = false;
-        check_webp_feature('lossy', function (f, x) { webpSupport = x; });
+        check_webp_feature('lossy', function (f, x) {
+            webpSupport = x;
+            if (!x) {
+                d7encoding.options[1].disabled = true;
+                d7encoding.value = 1;
+            }
+        });
 
         function startup() {
             if ((features & 32) == 0) {
@@ -1421,7 +1494,8 @@
             QV('authAppSetupCheck', userinfo.otpsecret == 1);
             //QV('authKeySetupCheck', userinfo.otphkeys > 0);
             QV('authCodesSetupCheck', userinfo.otpkeys > 0);
-            QV('p2AccountActions', ((features & 4) == 0) && (serverinfo.domainauth == false) && (userinfo != null) && (userinfo._id.split('/')[2].startsWith('~') == false));
+            QV('p2AccountActions', ((features & 4) == 0) && (serverinfo.domainauth == false) && (userinfo != null));
+            QV('p2AccountPassActions', ((features & 4) == 0) && (serverinfo.domainauth == false) && (userinfo != null) && (userinfo._id.split('/')[2].startsWith('~') == false)); // Hide Account Actions if in single user mode or domain authentication
 
             // On the mobile app, don't allow group creation (for now).
             QV('p3createMeshLink1', false);
@@ -1448,7 +1522,26 @@
         }
 
         function setSessionActivity() { sessionActivity = Date.now(); }
-        function checkIdleSessionTimeout() { var delta = (Date.now() - sessionActivity); if (delta > serverinfo.timeout) { window.location.href = 'logout'; } }
+        function checkIdleSessionTimeout() {
+            var delta = (Date.now() - sessionActivity);
+            if (delta > serverinfo.timeout) {
+                if (desktop != null) { // Disconnect remote desktop
+                    desktop.Stop();
+                    desktopNode = desktop = null;
+                }
+                if (terminal != null) { // Disconnect terminal
+                    terminal.Stop();
+                    terminal = null;
+                }
+                if (files != null) { // Disconnect files
+                    files.Stop();
+                    files = null;
+                }
+                if (serverinfo.logoutonidlesessiontimeout) {
+                    window.location.href = 'logout';
+                }
+            }
+        }
 
         function onMessage(server, message) {
             switch (message.action) {
@@ -1609,6 +1702,16 @@
                                 else if (userSessions.length == 1) { connectDesktop(null, 1, userSessions[0].SessionId, message.tag); } // One active session, connect to it
                                 else {
                                     var x = '';
+                                    var sortBy = "{{{userSessionsSort}}}";
+                                    if (sortBy != '') {
+                                        userSessions.sort(function(a, b) {
+                                            if (!a[sortBy]) return -1; // a comes before b
+                                            if (!b[sortBy]) return 1;  // b comes before a
+                                            if (a[sortBy] < b[sortBy]) return -1;
+                                            if (a[sortBy] > b[sortBy]) return 1;
+                                            return 0;
+                                        });
+                                    }
                                     for (var i in userSessions) {
                                         x += '<div style="text-align:left;cursor:pointer;background-color:gray;margin:5px;padding:5px;border-radius:5px" onclick=connectDesktop(event,1,' + userSessions[i].SessionId + ',' + message.tag + ')>' + userSessions[i].State + ', ' + userSessions[i].StationName;
                                         if (userSessions[i].Username) { if (userSessions[i].Domain) { x += ' - ' + userSessions[i].Domain + '/' + userSessions[i].Username; } else { x += ' - ' + userSessions[i].Username; } }
@@ -1660,7 +1763,7 @@
                             var secret = message.secret;
                             if (secret.length == 52) { secret = secret.split(/(.............)/).filter(Boolean).join(' '); }
                             else if (secret.length == 32) { secret = secret.split(/(....)/).filter(Boolean).join(' '); secret = secret.substring(0, 20) + '<br/>' + secret.substring(20) }
-                            QH('d2optinfo', format("Install <a href=\"https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2\" rel=\"noreferrer noopener\" target=_blank>Google Authenticator</a> or a compatible application, use <a href=\"{0}\" rel=\"noreferrer noopener\" target=_blank> this link</a> or enter the secret below. Then, enter the current 6 digit token to activate 2-Step login.", message.url) + '<br /><br /><div style=width:100%;text-align:center><tt id=d2optsecret secret="' + message.secret + '" style=font-size:15px>' + secret + '</tt><br /><br />Token: <input type=text autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" onkeypress=\"return (event.keyCode == 8) || (event.charCode >= 48 && event.charCode <= 57)\" onkeyup=account_addOtpCheck(event) onkeydown=account_addOtpCheck() maxlength=6 id=d2otpauthinput type=text></div>');
+                            QH('d2optinfo', format("Install" + ' <a href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2" rel="noreferrer noopener" target=_blank>' + "Google Authenticator" + '</a> ' + "or a compatible application, use <a href=\"{0}\" rel=\"noreferrer noopener\" target=_blank> this link</a> or enter the secret below. Then, enter the current 6 digit token to activate 2-Step login.", message.url) + '<br /><br /><div style=width:100%;text-align:center><tt id=d2optsecret secret="' + message.secret + '" style=font-size:15px>' + secret + '</tt><br /><br />Token: <input type=text autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" onkeypress=\"return (event.keyCode == 8) || (event.charCode >= 48 && event.charCode <= 57)\" onkeyup=account_addOtpCheck(event) onkeydown=account_addOtpCheck() maxlength=6 id=d2otpauthinput type=text></div>');
                             QV('idx_dlgOkButton', true);
                             QE('idx_dlgOkButton', false);
                             Q('d2otpauthinput').focus();
@@ -1670,12 +1773,12 @@
                 }
                 case 'otpauth-setup': {
                     if (xxdialogMode) return;
-                    setDialogMode(2, "Authenticator App", 1, null, message.success ? "<b style=color:green>2-step login activation successful</b>. You will now need a valid token to login again." : "<b style=color:red>2-step login activation failed</b>. Clear the secret from the application and try again. You only have a few minutes to enter the proper code.");
+                    setDialogMode(2, "Authenticator App", 1, null, message.success ? ('<b style=color:green>' + "Authenticator app activation successful." + '</b> ' + "You will now need a valid token to login again.") : ('<b style=color:red>' + "2-step login activation failed." + '</b> ' + "Clear the secret from the application and try again. You only have a few minutes to enter the proper code."));
                     break;
                 }
                 case 'otpauth-clear': {
                     if (xxdialogMode) return;
-                    setDialogMode(2, "Authenticator App", 1, null, message.success ? "<b style=color:green>2-step login activation removed</b>. You can reactivate this feature at any time." : "<b style=color:red>2-step login activation removal failed</b>. Try again.");
+                    setDialogMode(2, "Authenticator App", 1, null, message.success ? ('<b>' + "Authenticator application removed." + '</b> ' + "You can reactivate this feature at any time.") : ('<b style=color:red>' + "2-step login activation removal failed." + '</b> ' + "Try again."));
                     break;
                 }
                 case 'otpauth-getpasswords': {
@@ -1942,6 +2045,8 @@
                                 // Change the node
                                 node.name = message.event.node.name;
                                 node.rname = message.event.node.rname;
+                                node.lusers = message.event.node.lusers;
+                                node.users = message.event.node.users;
                                 node.host = message.event.node.host;
                                 node.desc = message.event.node.desc;
                                 node.publicip = message.event.node.publicip;
@@ -2146,6 +2251,10 @@
                 var foundNode = null;
                 if (nodes != null) { for (var i in nodes) { if (nodes[i].name == args.gotodevicename) { foundNode = nodes[i]._id; } } }
                 if (foundNode) { gotoDevice(foundNode, xviewmode); go(xviewmode); }
+            } else if (args.gotodeviceip != null) {
+                var foundNode = null;
+                if (nodes != null) { for (var i in nodes) { if (nodes[i].ip == args.gotodeviceip) { foundNode = nodes[i]._id; } } }
+                if (foundNode) { gotoDevice(foundNode, xviewmode); go(xviewmode); }
             } else if (args.gotomesh != null) {
                 if (meshes['mesh/' + domain + '/' + args.gotomesh] == null) return; // This device group is not loaded yet
                 gotoMesh('mesh/' + domain + '/' + args.gotomesh);
@@ -2189,7 +2298,11 @@
             if (idtype == 'mesh') { gotoMesh(id); }
             if (idtype == 'account') { go(3); }
             if (idtype == 'devices') { go(2); }
-            if (idtype == 'files') { go(5); }
+            if (idtype == 'files') {
+                // Remind the user to add two factor authentication
+                if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || (userinfo.otpduo > 0) || (userinfo.otpdev > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access this feature until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }  
+                go(5);
+            }
         }
 
         function updateFooterMenu(options) {
@@ -2470,7 +2583,7 @@
             if ((userinfo.emailVerified !== true) && (serverinfo.emailcheck == true) && (userinfo.siteadmin != 0xFFFFFFFF)) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until a email address is verified. This is required for password recovery. Go to the \"My Account\" to change and verify an email address."); return; }
 
             // Remind the user to add two factor authentication
-            if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }
+            if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || (userinfo.otpduo > 0) || (userinfo.otpdev > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }
 
             // We are allowed, let's prompt to information
             var x = addHtmlValue("Name", '<input id=dp3meshname style=width:170px maxlength=64 onchange=account_validateMeshCreate() onkeyup=account_validateMeshCreate() />');
@@ -2563,10 +2676,117 @@
         }
 
         function gotoMesh(meshid) {
+            // Remind the user to add two factor authentication
+            if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || (userinfo.otpduo > 0) || (userinfo.otpdev > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access this feature until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }  
             currentMesh = meshes[meshid];
             if (currentMesh == null) { goBack(); }
             p20updateMesh();
             go(20);
+        }
+
+        //
+        // FILE SELECTOR, DIALOG 3
+        //
+
+        function d3init() {
+            d3fileoptions = { dialog: 1, filter: 'd3filter', files: 'd3serverfiles', folderup: 'p3FolderUp', currentFolder: 'p3CurrentFolder', func: d3setActions };
+            Q('d3localFile').value = '';
+            Q('d3localFile').accept  = Q('d3filter').value;
+            d3modechange();
+        }
+
+        function d3modechange() {
+            var mode = Q('d3uploadMode').value;
+            QV('d3localmode', mode == 1);
+            QV('d3servermode', mode == 2);
+            if (mode == 1) { d3setActions(); } else { d3updatefiles(); }
+        }
+
+        var d3filetreelinkpath;
+        var d3filetreelocation = [];
+        var d3fileoptions = null;
+        function d3updatefiles() {
+            if (d3fileoptions == null) return;
+            if ((d3fileoptions.filter == 'd3filter') && (Q('d3uploadMode').value == 1)) return;
+            var html1 = '', html2 = '', filetreex = filetree, folderdepth = 1, publicPath = null, lastFolderName = '';
+
+            // Navigate to path location, build the paths at the same time
+            var d3filetreelocation2 = [], oldlinkpath = d3filetreelinkpath, checkedBoxes = [], checkboxes = document.getElementsByName('fc');
+            for (var i = 0; i < checkboxes.length; i++) { if (checkboxes[i].checked) { checkedBoxes.push(checkboxes[i].value) }; } // Save all existing checked boxes
+
+            d3filetreelinkpath = '';
+            for (var i in d3filetreelocation) {
+                if ((filetreex.f != null) && (filetreex.f[d3filetreelocation[i]] != null)) {
+                    d3filetreelocation2.push(d3filetreelocation[i]);
+                    if ((folderdepth == 1)) {
+                        var sp = d3filetreelocation[i].split('/');
+                        publicPath = window.location.origin + domainUrl + sp[0] + 'files/' + sp[2];
+                        if (d3filetreelocation[i] === userinfo._id) { d3filetreelinkpath += 'self'; } else { d3filetreelinkpath += (sp[0] + '/' + sp[2]); }
+                    } else {
+                        if (d3filetreelinkpath != '') { d3filetreelinkpath += '/' + d3filetreelocation[i]; if (folderdepth > 2) { publicPath += '/' + d3filetreelocation[i]; } }
+                    }
+                    filetreex = filetreex.f[d3filetreelocation[i]];
+                    lastFolderName = filetreex.n;
+                    folderdepth++;
+                } else {
+                    break;
+                }
+            }
+            d3filetreelocation = d3filetreelocation2; // In case we could not go down the full path, we set the new path location here.
+
+            // Sort the files
+            var filetreexx = p5sort_files(filetreex.f);
+
+            // File filter
+            var fileFilter = '';
+            if (d3fileoptions.filter) { fileFilter = Q(d3fileoptions.filter).value };
+
+            // Display all files and folders at this location
+            for (var i in filetreexx) {
+                // Figure out the name and shortname
+                var f = filetreexx[i], name = f.n, shortname;
+
+                // Filter out files
+                if ((f.t == 3) && (fileFilter != '') && (f.nx.toLowerCase().endsWith(fileFilter) == false)) { continue; }
+                if (name.length > 70) { shortname = '<span title="' + EscapeHtml(name) + '">' + EscapeHtml(name.substring(0, 70)) + ("..." + '</span>'); } else { shortname = EscapeHtml(name); }
+
+                // Figure out the size
+                var fsize = '';
+                if (f.s != null) { fsize = getFileSizeStr(f.s); }
+
+                var h = '';
+                if (f.t != 3) {
+                    var title = '';
+                    h = '<div class=filelist file=999><span style=float:right title="' + title + '"></span><span><div class=fileIcon' + f.t + ' onclick=d3folderset("' + encodeURIComponentEx(f.nx) + '")></div>&nbsp;<a href=# style=cursor:pointer onclick=\'return d3folderset("' + encodeURIComponentEx(f.nx) + '")\'>' + shortname + '</a></span></div>';
+                } else {
+                    var link = shortname;
+                    //if (f.s > 0) { link = "<a rel=\"noreferrer noopener\" target=\"_blank\" href=\"downloadfile.ashx?link=" + encodeURIComponentEx(filetreelinkpath + '/' + f.nx) + "\">" + shortname + "</a>"; }
+                    h = '<div class=filelist file=3><input style=float:left name=fcx class=fcb type=checkbox onchange=d3setActions() value="' + f.nx + '">&nbsp;<span style=float:right>' + EscapeHtml(fsize) + '</span><span><div class=fileIcon' + f.t + '></div>' + link + '</span></div>';
+                }
+
+                if (f.t < 3) { html1 += h; } else { html2 += h; }
+            }
+
+            if (d3fileoptions.currentFolder) { QH(d3fileoptions.currentFolder, lastFolderName); }
+            QH(d3fileoptions.files, html1 + html2);
+            QE(d3fileoptions.folderup, d3filetreelocation.length > 0);
+            if (d3fileoptions.func) { d3fileoptions.func(); }
+        }
+
+        function d3folderset(x) { d3filetreelocation.push(decodeURIComponent(x)); d3updatefiles(); return false; }
+        function d3folderup(x) { if (x == null) { d3filetreelocation.pop(); } else { while (d3filetreelocation.length > x) { d3filetreelocation.pop(); } } d3updatefiles(); }
+        function d3getFileSel() { var cc = []; var checkboxes = document.getElementsByName('fcx'); for (var i = 0; i < checkboxes.length; i++) { if (checkboxes[i].checked) { cc.push(checkboxes[i].value) } } return cc; }
+        function d3setActions() {
+            if (d3fileoptions.dialog == 1) {
+                var mode = Q('d3uploadMode').value;
+                if (mode == 1) {
+                    QE('idx_dlgOkButton', Q('d3localFile').value.length > 0);
+                } else {
+                    QE('idx_dlgOkButton', d3getFileSel().length == 1);
+                }
+            } else if (d3fileoptions.dialog == 2) {
+                QE('idx_dlgOkButton', d3getFileSel().length == 1);
+            }
         }
 
         //
@@ -2594,7 +2814,7 @@
                     fullPath += ' / ' + filetreelocation[i];
                     if ((folderdepth == 1)) {
                         var sp = filetreelocation[i].split('/');
-                        publicPath = window.location + sp[0] + 'files/' + sp[2];
+                        publicPath = window.location.origin + domainUrl + sp[0] + 'files/' + sp[2];
                         //if (filetreelocation[i] === userinfo._id) { filetreelinkpath += 'self'; } else { filetreelinkpath += (sp[0] + '/' + sp[2]); }
                         filetreelinkpath += filetreelocation[i];
                     } else {
@@ -3461,7 +3681,7 @@
             if ((userinfo.emailVerified !== true) && (serverinfo.emailcheck == true) && (userinfo.siteadmin != 0xFFFFFFFF)) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until a email address is verified. This is required for password recovery. Go to the \"My Account\" to change and verify an email address."); return; }
 
             // Remind the user to add two factor authentication
-            if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }
+            if ((features & 0x00040000) && !((userinfo.otpsecret == 1) || (userinfo.otphkeys > 0) || (userinfo.otpkeys > 0) || (userinfo.otpduo > 0) || (userinfo.otpdev > 0) || ((features & 0x00800000) && (userinfo.otpekey == 1)))) { setDialogMode(2, "Account Security", 1, null, "Unable to access a device until two-factor authentication is enabled. This is required for extra security. Go to the \"My Account\" and look at the \"Account Security\" section."); return; }
 
             var node = getNodeFromId(nodeid);
             if (node == null) { goBack(); return; }
@@ -3925,6 +4145,10 @@
 
         function showNotesEx(buttons, tag) { meshserver.send({ action: 'setNotes', id: decodeURIComponent(tag), notes: encodeURIComponentEx(Q('d2devNotes').value) }); }
 
+        function deviceLockFunction() {
+            if ((xxdialogMode != null || xxdialogMode == 0) && (desktop != null) && (desktop.contype == 1)) { setDialogMode(2, "Lock Desktop", 3, function() { if ((desktop != null) && (desktop.contype == 1)) { desktop.sendCtrlMsg('{"ctrlChannel":"102938","type":"lock"}'); } }, "Lock user desktop?"); }
+        }
+
         function deviceChat(e) {
             if (xxdialogMode) return;
             setDialogMode(2, "Device Action", 3, function () {
@@ -3940,6 +4164,115 @@
             }, "Start chat session?");
         }
 
+        function deviceUrlFunction() {
+            if (xxdialogMode) return;
+            setDialogMode(2, "Open Page on Device", 3, deviceUrlFunctionEx, '<input id=d2devurl placeholder="http://server.com" style=width:100%;overflow-y:scroll onkeyup=deviceUrlFunctionValidate() onchange=deviceUrlFunctionValidate()></input>');
+            Q('d2devurl').focus();
+            deviceUrlFunctionValidate();
+        }
+
+        function deviceUrlFunctionValidate() {
+            var x = Q('d2devurl').value.toLowerCase();
+            QE('idx_dlgOkButton', ((x.startsWith('http://') && (x.length > 7)) || (x.startsWith('https://') && (x.length > 8))));
+        }
+
+        function deviceUrlFunctionEx() {
+            meshserver.send({ action: 'msg', type: 'openUrl', nodeid: currentNode._id, url: Q('d2devurl').value });
+        }
+
+        function runDeviceCmd(nodeid) { if (xxdialogMode) return; d2runCommandDialog({ nodeids: [ nodeid ? decodeURIComponent(nodeid) : currentNode._id ] }); }
+
+        function d2runCommandDialog(options) {
+            var wintype = false, linuxtype = false, agenttype = false;
+            for (var i in options.nodeids) {
+                var n = getNodeFromId(options.nodeids[i]);
+                if (n.agent) { if ((GetNodeRights(n) & 24) == 24) { agenttype = true; }
+                if ((n.agent.id > 0) && (n.agent.id < 5)) { wintype = true; } else { linuxtype = true; } }
+            }
+            if ((wintype == true) || (linuxtype == true) || (agenttype == true)) {
+                // Fetch run options
+                var runopt = { type:1, runAs:0, source:1, cmd:'' };
+                try { runopt = JSON.parse(getstore('runopt', runopt)); } catch (ex) {}
+
+                if (options.selectedFile) {
+                    var filename = options.selectedFile.name.toLowerCase();
+                    console.log('filename', filename);
+                    if (filename.endsWith('.bat')) { runopt.type = 1; }
+                    if (filename.endsWith('.ps1')) { runopt.type = 2; }
+                    if (filename.endsWith('.sh')) { runopt.type = 3; }
+                    if (filename.endsWith('.agentconsole')) { runopt.type = 4; }
+                }
+
+                var x = '';
+                if (options.title) { x += options.title + '<br />'; }
+                x += '<select id=d2cmdtype onclick=d2runCommandValidate() style=width:100%;margin-bottom:4px;margin-top:4px>';
+                if (wintype == true) { x += '<option value=1' + ((runopt.type == 1)?' selected':'') + '>' + "Windows Command Prompt" + '</option><option value=2' + ((runopt.type == 2)?' selected':'') + '>' + "Windows PowerShell" + '</option>'; }
+                if (linuxtype == true) { x += '<option value=3' + ((runopt.type == 3)?' selected':'') + '>' + "Linux/BSD/macOS Command Shell" + '</option>'; }
+                if (agenttype == true) { x += '<option value=4' + ((runopt.type == 4)?' selected':'') + '>' + "Agent Console" + '</option>'; } // MESHRIGHT_REMOTECONTROL & MESHRIGHT_AGENTCONSOLE are needed
+                x += '</select>';
+                x += '<select id=d2cmduser style=width:100%;margin-bottom:4px><option value=0' + ((runopt.runAs == 0)?' selected':'') + '>' + "Run as agent" + '</option><option value=1' + ((runopt.runAs == 1)?' selected':'') + '>' + "Run as user, agent if no user" + '</option><option value=2' + ((runopt.runAs == 2)?' selected':'') + '>' + "Must run as user" + '</option></select>';
+                if (options.selectedFile == null) {
+                    x += '<select id=d2cmdsource onclick=d2runCommandValidate() style=width:100%;margin-bottom:4px><option value=0' + ((runopt.source == 0)?' selected':'') + '>' + "Commands from text box" + '</option><option value=1' + ((runopt.source == 1)?' selected':'') + '>' + "Commands from file" + '</option>';
+                    if (userinfo.siteadmin & 8) { x += '<option value=2' + ((runopt.source == 2)?' selected':'') + '>' + "Commands from file on server" + '</option>'; }
+                    x += '</select><textarea id=d2runcmd onkeyup=d2runCommandValidate() style=background-color:#fcf3cf;width:100%;height:200px;resize:none;overflow-y:scroll>' + (runopt.cmd ? EscapeHtml(decodeURIComponent(runopt.cmd)) : '') + '</textarea>';
+                    x += '<div id=d2runfile style=display:none><input id=d2runfileex type=file onchange=d2runCommandValidate() id=d2localFile name=files onchange=d2runCommandValidate() /></div>';
+                    if (userinfo.siteadmin & 8) { x += '<div id=d2runsfile style=display:none><div id=d2serveraction valign=bottom><input type=button id=p2FolderUp disabled="disabled" onclick=d3folderup() value="Up" />&nbsp;<span id=p2CurrentFolder></span></div><div id=d2serverfiles></div></div>'; }
+                }
+                setDialogMode(2, "Run Commands", 3, d2groupActionFunctionRunCommands, x, options);
+                if (options.selectedFile == null) {
+                    Q('d2runcmd').focus();
+                    if (userinfo.siteadmin & 8) { d3fileoptions = { dialog: 2, files: 'd2serverfiles', folderup: 'p2FolderUp', currentFolder: 'p2CurrentFolder', func: null }; d3updatefiles(); } // Update the server files
+                }
+                d2runCommandValidate();
+            }
+        }
+
+        function d2runCommandValidate() {
+            QV('d2cmduser', Q('d2cmdtype').value < 4);
+            if (xxdialogTag.selectedFile == null) {
+                QV('d2runcmd', Q('d2cmdsource').value == 0);
+                QV('d2runfile', Q('d2cmdsource').value == 1);
+                QV('d2runsfile', Q('d2cmdsource').value == 2);
+                var ok = false;
+                if (Q('d2cmdsource').value == 0) { if (Q('d2runcmd').value.length > 0) { ok = true; } } // From text box
+                if (Q('d2cmdsource').value == 1) { if (Q('d2runfileex').files.length == 1) { ok = true; } } // From file
+                if (Q('d2cmdsource').value == 2) { ok = false; } // From server file
+                QE('idx_dlgOkButton', ok);
+            } else {
+                QE('idx_dlgOkButton', true);
+            }
+        }
+
+        function d2groupActionFunctionRunCommands(b, options) {
+            var type = 3;
+            try { type = parseInt(Q('d2cmdtype').value); } catch (ex) { }
+            if (options.selectedFile == null) { putstore('runopt', JSON.stringify({ type: type, runAs: parseInt(Q('d2cmduser').value), source: parseInt(Q('d2cmdsource').value), cmd: encodeURIComponent(Q('d2runcmd').value) })); } // Save run options
+            var cmd = { action: 'runcommands', nodeids: options.nodeids, type: type, runAsUser: parseInt(Q('d2cmduser').value) };
+            if (options.selectedFile) {
+                // Drag & drop file
+                var reader = new FileReader();
+                reader.onload = function (e) { cmd.cmds = e.target.result; meshserver.send(cmd); if (options.func) { options.func(); } }
+                reader.readAsText(options.selectedFile);
+            } else if (Q('d2cmdsource').value == 0) {
+                // From text box
+                cmd.cmds = Q('d2runcmd').value;
+                meshserver.send(cmd);
+                if (options.func) { options.func(); }
+            } else if (Q('d2cmdsource').value == 1) {
+                // From file
+                var reader = new FileReader();
+                reader.onload = function (e) { cmd.cmds = e.target.result; meshserver.send(cmd); if (options.func) { options.func(); } }
+                reader.readAsText(Q('d2runfileex').files[0]);
+            } else if (Q('d2cmdsource').value == 2) {
+                // From server file
+                var files = d3getFileSel();
+                if (files.length != 1) return;
+                cmd.cmdpath = d3filetreelocation.join('/') + '/' + files[0];
+                meshserver.send(cmd);
+                if (options.func) { options.func(); }
+            }
+        }
+
         // Look to see if we need to update the device timeline
         function updateDeviceTimeline() {
             if ((meshserver.State != 2) || (powerTimelineNode == null) || (powerTimelineUpdate == null) || (currentNode == null) || (currentNode.mtype == 3)) return;
@@ -3948,7 +4281,7 @@
 
         // Draw device power bars. The bars are 766px wide.
         function drawDeviceTimeline() {
-            if (currentNode.mtype == 3 || hidePowerTimeline) { QH('p10html2', '<br />'); return; }
+            if (currentNode.mtype == 3 || hidePowerTimeline === 'true') { QH('p10html2', '<br />'); return; }
             var timeline = null, now = Date.now();
             if (currentNode._id == powerTimelineNode) { timeline = powerTimeline; }
 
@@ -3988,7 +4321,7 @@
                 }
                 x += '<tr style=' + (((count % 2) == 0) ? 'background-color:#DDD' : '') + '><td><div>&nbsp;' + printDate(date) + '<div></div></div></td><td><div>' + datavalue + '</div></td></tr>';
                 ++count;
-                date = new Date(date.getTime() - (1000 * 60 * 60 * 24)); // Substract one day
+                date = new Date(date.getFullYear(), date.getMonth(), date.getDate() - 1);
             }
             QH('p10html2', '<table style="color:black;background-color:#EEE;border-color:#AAA;border-width:1px;border-style:solid;border-collapse:collapse;width:calc(100% - 18px);margin:9px" border=0 cellpadding=2 cellspacing=0><tbody><tr style=background-color:#AAAAAA;font-weight:bold><th scope=col style=text-align:center;width:90px>' + "Day" + '</th><th scope=col style=text-align:center>' + "Power State" + '</th></tr>' + x + '</tbody></table>');
         }
@@ -4155,7 +4488,7 @@
 
         var desktop;
         var desktopNode;
-        var desktopsettings = { encoding: 2, showfocus: false, showmouse: true, showcad: true, quality: 40, scaling: 1024, framerate: 50, autolock: false };
+        var desktopsettings = { encoding: 2, showfocus: false, showmouse: true, showcad: true, quality: 40, scaling: 1024, framerate: 50, autolock: false, agentencoding: 4 };
         function setupDesktop() {
             // Setup the remote desktop
             if ((desktopNode != currentNode) && (desktop != null)) { desktop.Stop(); desktopNode = null; desktop = null; }
@@ -4263,6 +4596,7 @@
                     desktop.debugmode = debugmode;
                     desktop.m.debugmode = debugmode;
                     desktop.attemptWebRTC = attemptWebRTC;
+                    desktop.webrtcconfig = webrtcconfiguration;
                     desktop.options = {};
                     if (tsid != null) { desktop.options.tsid = tsid; }
                     if (consent != null) { desktop.options.consent = consent; }
@@ -4279,7 +4613,7 @@
                             p11clearConsoleMsg();
                         }
                     }
-                    desktop.m.ImageType = webpSupport ? 4 : 1; // Send 4 if WebP is supported, otherwise send 1 for JPEG.
+                    desktop.m.ImageType = desktopsettings.agentencoding; // Send 4 if WebP is supported, otherwise send 1 for JPEG.
                     desktop.m.CompressionLevel = desktopsettings.quality; // Number from 1 to 100. 50 or less is best.
                     desktop.m.ScalingLevel = desktopsettings.scaling;
                     desktop.m.FrameRateTimer = desktopsettings.framerate;
@@ -4363,12 +4697,14 @@
             desktopsettings.scaling = d7bitmapscaling.value;
             desktopsettings.framerate = d7framelimiter.value;
             desktopsettings.autolock = d7deskAutoLock.checked;
+            desktopsettings.agentencoding = d7encoding.value;
             localStorage.setItem('desktopsettings', JSON.stringify(desktopsettings));
             applyDesktopSettings();
             if (desktop) {
                 if (desktop.contype == 1) {
-                    if (desktop.State != 0) { desktop.m.SendCompressionLevel(webpSupport ? 4 : 1, desktopsettings.quality, desktopsettings.scaling, desktopsettings.framerate); }
+                    if (desktop.State != 0) { desktop.m.SendCompressionLevel(desktopsettings.agentencoding, desktopsettings.quality, desktopsettings.scaling, desktopsettings.framerate); }
                     desktop.sendCtrlMsg('{"ctrlChannel":"102938","type":"autolock","value":' + desktopsettings.autolock + '}');
+                    desktop.m.SendRefresh();
                 }
                 if (desktop.contype == 2) {
                     if (desktop.State != 0) { desktop.Stop(); setTimeout(function () { connectDesktop(null, 2); }, 50); }
@@ -4382,6 +4718,7 @@
             QH('d7bitmapquality', r);
             d7desktopmode.value = desktopsettings.encoding;
             d7bitmapquality.value = 40; // Default value
+            if (desktopsettings.agentencoding) { d7encoding.value = desktopsettings.agentencoding; } else { desktopsettings.agentencoding = 4; }
             if (ops.indexOf(parseInt(desktopsettings.quality)) >= 0) { d7bitmapquality.value = desktopsettings.quality; }
             d7bitmapscaling.value = desktopsettings.scaling;
             if (desktopsettings.framerate) { d7framelimiter.value = desktopsettings.framerate; }
@@ -4468,6 +4805,15 @@
             xxdialogMode = 0;
             putstore('deskKeyShortcuts', deskKeyboardShortcuts.join(','));
             updateDeskShortcutKeys();
+        }
+
+        function restoreDeskCustomizeKey() {
+            deskKeyboardShortcuts = [];
+            putstore('deskKeyShortcuts', null);
+            var deskKeyboardShortcutsStr = getstore('deskKeyShortcuts', '0x0A002E,0x100000,0x100028,0x100026,0x10004C,0x10004D,0x11004D,0x100052,0x020073,0x080057,0x020009,0x100025,0x100027').split(',');
+            for (var i in deskKeyboardShortcutsStr) { if (deskKeyboardShortcutsStr[i] != "") { deskKeyboardShortcuts.push(parseInt(deskKeyboardShortcutsStr[i])); } }
+            updateDeskShortcutKeys();
+            deskUpdateShortcutList();
         }
 
         function deskUpdateShortcutList() {
@@ -4831,6 +5177,9 @@
 
             // Enable action button if mesh type is not "local devices"
             QV('termActionsBtn', terminalNode.mtype != 3);
+            QE('ctrlcbutton', termState);
+            QE('ctrlxbutton', termState);
+            QE('escbutton', termState);
             if (((termState == true) && (terminal.contype != 3)) || (terminalNode.agent == null) || (terminalNode.agent.id == 3) || (terminalNode.agent.id == 4)) {
                 QH('terminalCustomUpperRight', '');
             } else {
@@ -5097,6 +5446,7 @@
                         if (termoptions.protocol == 1) { termoptions.protocol = 6; } // Switch to Powershell
                     }
                 }
+                */
 
                 // If the server requires a shell type
                 if ((serverinfo.linuxshell) != null && (currentNode.agent.id > 4)) {
@@ -5104,7 +5454,6 @@
                     if (serverinfo.linuxshell == 'user') { termoptions.protocol = 8; delete termoptions.requireLogin; }
                     if (serverinfo.linuxshell == 'login') { termoptions.protocol = 1; termoptions.requireLogin = true; }
                 }
-                */
 
                 // Setup a mesh agent xterm terminal
                 QV('termarea3xdiv', true);
@@ -5148,6 +5497,26 @@
                 if (fullscreen) { deskToggleFull(); }
             }
             Q('connectbutton2').blur(); // Deselect the connect button so the button does not get key presses.
+        }
+
+        function termSendKey(key, id) {
+            if (!terminal || xxdialogMode) return;
+            if (xterm != null) {
+                if (terminal.urlname == 'sshterminalrelay.ashx') {
+                    // SSH
+                    terminal.socket.send('~' + String.fromCharCode(key));
+                } else if (terminal.sendText) {
+                    // MeshAgent
+                    terminal.sendText(String.fromCharCode(key));
+                } else {
+                    // CIRA
+                    terminal.send(String.fromCharCode(key));
+                }
+                xterm.focus();
+            } else if (terminal != null) {
+                terminal.m.TermSendKey(key);
+                Q(id).blur(); // Deselect the connect button so the button does not get key presses.
+            }
         }
 
         //
@@ -5252,6 +5621,7 @@
                 if (contype == 2) { files.urlname = 'sshfilesrelay.ashx'; } // If this is a SSH session, change the URL to the SSH application relay.
                 files.contype = contype;
                 files.attemptWebRTC = attemptWebRTC;
+                files.webrtcconfig = webrtcconfiguration;
                 files.onStateChanged = onFilesStateChange;
                 files.onConsoleMessageChange = function () {
                     if (files.consoleMessage) {
@@ -5551,7 +5921,7 @@
             downloadFile = { path: decodeURIComponent(x), file: decodeURIComponent(y), size: z, tsize: 0, data: '', state: 0, id: Math.random() }
             //console.log('p13downloadFileCancel', downloadFile);
             files.sendText({ action: 'download', sub: 'start', id: downloadFile.id, path: downloadFile.path });
-            setDialogMode(2, "Download File", 10, p13downloadFileCancel, '<div>' + downloadFile.file + '</div><br /><progress id=d2progressBar style=width:100% value=0 max=' + z + ' />');
+            setDialogMode(2, "Download File", 10, p13downloadFileCancel, '<div>' + EscapeHtml(downloadFile.file) + '</div><br /><progress id=d2progressBar style=width:100% value=0 max=' + z + ' />');
         }
 
         // Called by the html page to cancel the download
@@ -5699,7 +6069,7 @@
             if (uploadFile.xfiles.length > uploadFile.xfilePtr) {
                 uploadFile.xptr = 0;
                 var file = uploadFile.xfiles[uploadFile.xfilePtr];
-                QH('p13dfileName', file.name);
+                QH('p13dfileName', EscapeHtml(file.name));
                 Q('d2progressBar').max = file.size;
                 Q('d2progressBar').value = 0;
                 if (file.xdata == null) {
@@ -5769,7 +6139,7 @@
                 if (start >= data.byteLength) {
                     files.sendText(JSON.stringify({ action: 'uploaddone', reqid: uploadFile.xfilePtr }));
                 } else {
-                    var end = uploadFile.xptr + 16384;
+                    var end = uploadFile.xptr + (attemptWebRTC ? 16384 : 65536);
                     if (end > data.byteLength) { if (dataPriming == true) { return; } end = data.byteLength; }
                     var dataslice = new Uint8Array(data.slice(start, end))
                     if ((dataslice[0] == 123) || (dataslice[0] == 0)) {
@@ -5785,7 +6155,7 @@
             } else if (uploadFile.xfile) {
                 if (uploadFile.xreader != null) return; // Data reading already in process
                 if (uploadFile.xptr >= uploadFile.xfile.size) return;
-                var end = uploadFile.xptr + 16384;
+                var end = uploadFile.xptr + (attemptWebRTC ? 16384 : 65536);
                 if (end > uploadFile.xfile.size) { if (dataPriming == true) { return; } end = uploadFile.xfile.size; }
                 uploadFile.xreader = new FileReader();
                 uploadFile.xreader.onerror = function (err) { console.log(err); }
@@ -5834,91 +6204,98 @@
             var sections = [], s = {};
 
             // Operating System
-            if ((hardware.windows && hardware.windows.osinfo) || node.osdesc) {
-                var x = '';
-                if (node.rname) { x += addDetailItem("Name", EscapeHtml(node.rname), s); }
-                if (node.osdesc) { x += addDetailItem("Version", EscapeHtml(node.osdesc), s); }
-                if (hardware.windows && hardware.windows.osinfo) {
-                    var m = hardware.windows.osinfo;
-                    if (m.OSArchitecture) {
-                        if (m.OSArchitecture.startsWith('32')) { x += addDetailItem("Architecture", "32-bit", s); }
-                        else if (m.OSArchitecture.startsWith('64')) { x += addDetailItem("Architecture", "64-bit", s); }
-                        else { x += addDetailItem("Architecture", EscapeHtml(m.OSArchitecture), s); }
-                    }
-                    if(m.LastBootUpTime){
-                        var thedate = {
-                            year: parseInt(m.LastBootUpTime.substring(0, 4)),
-                            month: parseInt(m.LastBootUpTime.substring(4, 6)) - 1, // Months are 0-based in JavaScript (0 - January, 11 - December)
-                            day: parseInt(m.LastBootUpTime.substring(6, 8)),
-                            hours: parseInt(m.LastBootUpTime.substring(8, 10)),
-                            minutes: parseInt(m.LastBootUpTime.substring(10, 12)),
-                            seconds: parseInt(m.LastBootUpTime.substring(12, 14)),
-                        };
-                        const date = printDateTime(new Date(thedate.year, thedate.month, thedate.day, thedate.hours, thedate.minutes, thedate.seconds));
-                        x += addDetailItem("Last Boot Up Time", date);
-                    }
+            var x = '';
+            if (node.rname) { x += addDetailItem("Name", EscapeHtml(node.rname), s); }
+            if (hardware.windows && hardware.windows.osinfo && hardware.windows.osinfo.Description) { x += addDetailItem("Description", EscapeHtml(hardware.windows.osinfo.Description), s); }
+            if (node.osdesc) { x += addDetailItem("Version", EscapeHtml(node.osdesc), s); }
+            if (hardware.windows && hardware.windows.osinfo) {
+                var m = hardware.windows.osinfo;
+                if (m.OSArchitecture) {
+                    if (m.OSArchitecture.startsWith('32')) { x += addDetailItem("Architecture", "32-bit", s); }
+                    else if (m.OSArchitecture.startsWith('64')) { x += addDetailItem("Architecture", "64-bit", s); }
+                    else { x += addDetailItem("Architecture", EscapeHtml(m.OSArchitecture), s); }
                 }
-                if(hardware.linux && hardware.linux.LastBootUpTime){
-                    var lastBootUpTime = new Date(hardware.linux.LastBootUpTime);
+                if(m.LastBootUpTime){
                     var thedate = {
-                        year: lastBootUpTime.getFullYear(),
-                        month: lastBootUpTime.getMonth(),
-                        day: lastBootUpTime.getDate(),
-                        hours: lastBootUpTime.getHours(),
-                        minutes: lastBootUpTime.getMinutes(),
-                        seconds: lastBootUpTime.getSeconds()
+                        year: parseInt(m.LastBootUpTime.substring(0, 4)),
+                        month: parseInt(m.LastBootUpTime.substring(4, 6)) - 1, // Months are 0-based in JavaScript (0 - January, 11 - December)
+                        day: parseInt(m.LastBootUpTime.substring(6, 8)),
+                        hours: parseInt(m.LastBootUpTime.substring(8, 10)),
+                        minutes: parseInt(m.LastBootUpTime.substring(10, 12)),
+                        seconds: parseInt(m.LastBootUpTime.substring(12, 14)),
                     };
                     const date = printDateTime(new Date(thedate.year, thedate.month, thedate.day, thedate.hours, thedate.minutes, thedate.seconds));
                     x += addDetailItem("Last Boot Up Time", date);
                 }
-                if(hardware.darwin && hardware.darwin.LastBootUpTime){
-                    var lastBootUpTime = new Date(hardware.darwin.LastBootUpTime * 1000); // must times by 1000 even tho timestamp is correct?
-                    var thedate = {
-                        year: lastBootUpTime.getFullYear(),
-                        month: lastBootUpTime.getMonth(),
-                        day: lastBootUpTime.getDate(),
-                        hours: lastBootUpTime.getHours(),
-                        minutes: lastBootUpTime.getMinutes(),
-                        seconds: lastBootUpTime.getSeconds()
-                    };
-                    const date = printDateTime(new Date(thedate.year, thedate.month, thedate.day, thedate.hours, thedate.minutes, thedate.seconds));
-                    x += addDetailItem("Last Boot Up Time", date);
-                }
-                     
-                // Windows Security Central
-                if (node.wsc) {
-                    var y = [];
-                    if (node.wsc.antiVirus != null) { if (node.wsc.antiVirus == 'OK') { y.push("AV" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("AV" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
-                    if (node.wsc.autoUpdate != null) { if (node.wsc.autoUpdate == 'OK') { y.push("Update" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("Update" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
-                    if (node.wsc.firewall != null) { if (node.wsc.firewall == 'OK') { y.push("Firewall" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("Firewall" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
-                    x += addDetailItem("Windows Security", y.join(', '));
-                }
-
-                // Defender for Windows Server
-                if(node.defender && !node.wsc) {
-                    var y = [];
-                    if (node.defender.RealTimeProtection != null) { if (node.defender.RealTimeProtection == true) { y.push("RealTimeProtection" + ' - <span style=color:green>' + "On" + '</span>'); } else { y.push("RealTimeProtection" + ' - <span style=color:red>' + "Off" + '</span>'); } }
-                    if (node.defender.TamperProtected != null) { if (node.defender.TamperProtected == true) { y.push("TamperProtection" + ' - <span style=color:green>' + "On" + '</span>'); } else { y.push("TamperProtection" + ' - <span style=color:red>' + "Off" + '</span>'); } }
-                    x += addDetailItem("Windows Defender", y.join(', '));
-                }
-
-                // Antivirus
-                if (node.av && node.av.length > 0) {
-                    var y = [];
-                    for (var i in node.av) {
-                        if (node.av[i].product) {
-                            var avx = EscapeHtml(node.av[i].product);
-                            if (node.av[i].enabled !== true) { avx += ' - <span style=color:red>' + "Disabled" + '</span>'; }
-                            if (node.av[i].updated !== true) { avx += ' - <span style=color:red>' + "Out of date" + '</span>'; }
-                            if ((node.av[i].enabled == true) && (node.av[i].updated == true)) { avx += ' - <span style=color:green>' + "OK" + '</span>'; }
-                            y.push(avx);
-                        }
-                    }
-                    x += addDetailItem("Antivirus", y.join('<br />'));
-                }
-
-                if (x != '') { sections.push({ name: "Operating System", html: x, img: 'software' }); }
             }
+            if(hardware.linux && hardware.linux.LastBootUpTime){
+                var lastBootUpTime = new Date(hardware.linux.LastBootUpTime);
+                var thedate = {
+                    year: lastBootUpTime.getFullYear(),
+                    month: lastBootUpTime.getMonth(),
+                    day: lastBootUpTime.getDate(),
+                    hours: lastBootUpTime.getHours(),
+                    minutes: lastBootUpTime.getMinutes(),
+                    seconds: lastBootUpTime.getSeconds()
+                };
+                const date = printDateTime(new Date(thedate.year, thedate.month, thedate.day, thedate.hours, thedate.minutes, thedate.seconds));
+                x += addDetailItem("Last Boot Up Time", date);
+            }
+            if(hardware.darwin && hardware.darwin.LastBootUpTime){
+                var lastBootUpTime = new Date(hardware.darwin.LastBootUpTime * 1000); // must times by 1000 even tho timestamp is correct?
+                var thedate = {
+                    year: lastBootUpTime.getFullYear(),
+                    month: lastBootUpTime.getMonth(),
+                    day: lastBootUpTime.getDate(),
+                    hours: lastBootUpTime.getHours(),
+                    minutes: lastBootUpTime.getMinutes(),
+                    seconds: lastBootUpTime.getSeconds()
+                };
+                const date = printDateTime(new Date(thedate.year, thedate.month, thedate.day, thedate.hours, thedate.minutes, thedate.seconds));
+                x += addDetailItem("Last Boot Up Time", date);
+            }
+                    
+            // Windows Security Central
+            if (node.wsc) {
+                var y = [];
+                if (node.wsc.antiVirus != null) { if (node.wsc.antiVirus == 'OK') { y.push("AV" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("AV" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
+                if (node.wsc.autoUpdate != null) { if (node.wsc.autoUpdate == 'OK') { y.push("Update" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("Update" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
+                if (node.wsc.firewall != null) { if (node.wsc.firewall == 'OK') { y.push("Firewall" + ' - <span style=color:green>' + "OK" + '</span>'); } else { y.push("Firewall" + ' - <span style=color:red>' + "BAD" + '</span>'); } }
+                x += addDetailItem("Windows Security", y.join(', '));
+            }
+
+            // Defender for Windows Server
+            if(node.defender) {
+                var y = [];
+                if (node.defender.RealTimeProtection != null) { if (node.defender.RealTimeProtection == true) { y.push("RealTimeProtection" + ' - <span style=color:green>' + "On" + '</span>'); } else { y.push("RealTimeProtection" + ' - <span style=color:red>' + "Off" + '</span>'); } }
+                if (node.defender.TamperProtected != null) { if (node.defender.TamperProtected == true) { y.push("TamperProtection" + ' - <span style=color:green>' + "On" + '</span>'); } else { y.push("TamperProtection" + ' - <span style=color:red>' + "Off" + '</span>'); } }
+                if (y.length > 0) x += addDetailItem("Windows Defender", y.join(', '));
+            }
+
+            // Antivirus
+            if (node.av && node.av.length > 0) {
+                var y = [];
+                for (var i in node.av) {
+                    if (node.av[i].product) {
+                        var avx = EscapeHtml(node.av[i].product);
+                        if (node.av[i].enabled !== true) { avx += ' - <span style=color:red>' + "Disabled" + '</span>'; }
+                        if (node.av[i].updated !== true) { avx += ' - <span style=color:red>' + "Out of date" + '</span>'; }
+                        if ((node.av[i].enabled == true) && (node.av[i].updated == true)) { avx += ' - <span style=color:green>' + "OK" + '</span>'; }
+                        y.push(avx);
+                    }
+                }
+                x += addDetailItem("Antivirus", y.join('<br />'));
+            }
+
+            // Active Users
+           if (node.users && node.users.length > 0) {
+                var u = node.users.map(function(user) {
+                    return addKeyLinkConditional(EscapeHtml(user), "Locked", (node.lusers && node.lusers.indexOf(user) >= 0));
+                }).join(', ');
+                x += addDetailItem((node.users.length > 1 ? "Active Users" : "Active User"), u);
+            }
+
+            if (x != '') { sections.push({ name: "Operating System", html: x, img: 'software' }); }
 
             // MeshAgent
             if (node.agent) {
@@ -5968,6 +6345,7 @@
                 if (hardware.mobile.bootloader) { x += addDetailItem("Bootloader", EscapeHtml(hardware.mobile.bootloader), s); }
                 if (hardware.mobile.id) { x += addDetailItem("Identifier", EscapeHtml(hardware.mobile.id), s); }
                 if (hardware.mobile.host) { x += addDetailItem("Hostname", EscapeHtml(hardware.mobile.host), s); }
+                if (hardware.mobile.androidapi && hardware.mobile.androidrelease) { x += addDetailItem("Android Version", EscapeHtml(hardware.mobile.androidrelease + ', API Level ' + hardware.mobile.androidapi), s); }
                 if (x != '') { sections.push({ name: "Mobile Device", html: x, img: 'mobile' }); }
             }
 
@@ -6004,7 +6382,7 @@
                 }
                 if (hardware.network && hardware.network.dns) {
                     x += '<tr><td><div class=style10 style=border-radius:5px;padding:8px>';
-                    x += addDetailItem("<b>DNS Servers</b>", hardware.network.dns.join(", "));
+                    x += addDetailItem('<b>' + "DNS Servers" + '</b>', hardware.network.dns.join(", "));
                     x += '</div></td></tr>';
                 }
                 x += '</table>';
@@ -6015,6 +6393,7 @@
             if (node.intelamt != null) {
                 var x = '';
                 x += addDetailItem("Version", (node.intelamt.ver) ? ('v' + EscapeHtml(node.intelamt.ver)) : ('<i>' + "Unknown" + '</i>'), s);
+                x += addDetailItem("Identifier", (node.intelamt.uuid) ? (EscapeHtml(node.intelamt.uuid)) : ('<i>' + "Unknown" + '</i>'), s);
                 var provisioningStates = { 0: nobreak("Not Activated (Pre)"), 1: nobreak("Not Activated (In)"), 2: nobreak("Activated") };
                 var provisioningMode = '';
                 if ((node.intelamt.state == 2) && node.intelamt.flags) { if (node.intelamt.flags & 2) { provisioningMode = (', ' + "Client Control Mode (CCM)"); } else if (node.intelamt.flags & 4) { provisioningMode = (', ' + "Admin Control Mode (ACM)"); } }
@@ -6120,7 +6499,6 @@
                         x += '<div style=margin-bottom:3px><b>' + EscapeHtml((m.DeviceLocator ? m.DeviceLocator : 'Unknown')) + '</b></div>';
                         if (m.Size && m.Speed) { x += addDetailItem("Capacity / Speed", format("{0}, {1}", m.Size, m.Speed), s); }
                         else if (m.Size) { x += addDetailItem("Capacity", format("{0}", (m.Size)), s); }
-                        console.log(m.Manufacturer);
                         if (m.PartNumber) { x += addDetailItem("Part Number", EscapeHtml((m.Manufacturer && m.Manufacturer != '')?(m.Manufacturer + ', '):'') + EscapeHtml(m.PartNumber), s); }
                         x += '</div>';
                     }
@@ -6192,6 +6570,62 @@
                         bitlockerState = bitlockerState.join(' - ');
                         if (m.recoveryPassword) { bitlockerState += addKeyLink('', 'deviceDetailsShowBitlockerInfo(\"' + encodeURIComponentEx(i) + '\",\"' + encodeURIComponentEx(m.identifier) + '\",\"' + encodeURIComponentEx(m.recoveryPassword) + '\")'); }
                         x += addDetailItem("BitLocker", bitlockerState, s);
+                    }
+                    x += '</div>';
+                }
+                if (x != '') { sections.push({ name: "Storage Volumes", html: '<table style=width:100%>' + x + '</table>', img: 'storage'}); }
+            }
+
+            // Linux Volumes
+            if (hardware.linux && hardware.linux.volumes) {
+                var x = '';
+                for (var i in hardware.linux.volumes) {
+                    var m = hardware.linux.volumes[i];
+                    if(m.mount_point.startsWith('/var/lib/docker/overlay2')) continue;
+                    x += '<tr><td><div class=style10 style=border-radius:5px;padding:8px>';
+                    x += '<div style=margin-bottom:3px><b>' + m.mount_point + '</b></div>';
+                    if (m.size) {
+                        var sizes = ['KB', 'MB', 'GB', 'TB'];
+                        var j = parseInt(Math.floor(Math.log(Math.abs(m.size)) / Math.log(1024)), 10);
+                        var fsize = (j === 0 ? `${m.size} ${sizes[j]}` : `${(m.size / (1024 ** j)).toFixed(2)} ${sizes[j]}`);
+                        x += addDetailItem("Capacity", EscapeHtml(fsize), s);
+                    }
+                    if (m.available) {
+                        if (Math.abs(m.available) == 0) {
+                            var fsize = `0 KB`;
+                        } else {
+                            var sizes = ['KB', 'MB', 'GB', 'TB'];
+                            var j = parseInt(Math.floor(Math.log(Math.abs(m.available)) / Math.log(1024)), 10);
+                            var fsize = (j === 0 ? `${m.available} ${sizes[j]}` : `${(m.available / (1024 ** j)).toFixed(2)} ${sizes[j]}`);
+                        }
+                        x += addDetailItem("Capacity Remaining", EscapeHtml(fsize), s);
+                    }
+                    if (m.type) {
+                        var type = (m.removable == true ? "Removable" : (m.cdrom == true ? "CD-ROM" : ''));
+                        x += addDetailItem("File System", (type != '' ? (type + ' / ') : '') + (m.type == 'Unknown' ? "Unknown" : EscapeHtml(m.type)), s);
+                    }
+                    x += '</div>';
+                }
+                if (x != '') { sections.push({ name: "Storage Volumes", html: '<table style=width:100%>' + x + '</table>', img: 'storage'}); }
+            }
+
+            // MacOS Volumes
+            if (hardware.darwin && hardware.darwin.volumes) {
+                var x = '';
+                for (var i in hardware.darwin.volumes) {
+                    var m = hardware.darwin.volumes[i];
+                    if(m.mount_point.startsWith('/var/lib/docker/overlay2')) continue;
+                    x += '<tr><td><div class=style10 style=border-radius:5px;padding:8px>';
+                    x += '<div style=margin-bottom:3px><b>' + m.mount_point + '</b></div>';
+                    if (m.size) {
+                        x += addDetailItem("Capacity", EscapeHtml(m.size), s);
+                    }
+                    if (m.available) {
+                        x += addDetailItem("Capacity Remaining", EscapeHtml(m.available), s);
+                    }
+                    if (m.type) {
+                        var type = (m.removable == true ? "Removable" : (m.cdrom == true ? "CD-ROM" : ''));
+                        x += addDetailItem("File System", (type != '' ? (type + ' / ') : '') + (m.type == 'Unknown' ? "Unknown" : EscapeHtml(m.type)), s);
                     }
                     x += '</div>';
                 }
@@ -6385,7 +6819,19 @@
             if (e.shiftKey == true) { meshserver.send({ action: 'uploadagentcore', nodeid: consoleNode._id, type: 'default' }); } // Upload default core
             else if (e.altKey == true) { meshserver.send({ action: 'uploadagentcore', nodeid: consoleNode._id, type: 'clear' }); } // Clear the core
             else if (e.ctrlKey == true) { p15uploadCore2(); } // Upload the core from a file
-            else { setDialogMode(2, "Perform Agent Action", 3, p15uploadCoreEx, addHtmlValue("Action", '<select id=d3coreMode style=width:230px><option value=1>' + "Upload default server core" + '</option><option value=2>' + "Clear the core" + '</option><option value=6>' + "Upload recovery core" + '</option><option value=7>' + "Upload tiny core" + '</option><option value=3>' + "Upload a core file" + '</option><option value=4>' + "Soft disconnect agent" + '</option><option value=5>' + "Hard disconnect agent" + '</option></select>')); }
+            else { 
+                var htmlValue = '<select id=d3coreMode style=width:230px>' +
+                    '<option value=1>' + "Upload default server core" + '</option>' +
+                    '<option value=2>' + "Clear the core" + '</option>' +
+                    '<option value=3>' + "Upload a core file" + '</option>' +
+                    '<option value=4>' + "Soft disconnect agent" + '</option>' +
+                    '<option value=5>' + "Hard disconnect agent" + '</option>' +
+                    '<option value=6>' + "Upload recovery core" + '</option>' +
+                    '<option value=7>' + "Upload tiny core" + '</option>' +
+                    '<option value=8>' + "Restart agent service" + '</option>' +
+                    '<option value=9>' + "Force agent update" + '</option></select>';
+                setDialogMode(2, "Perform Agent Action", 3, p15uploadCoreEx, addHtmlValue("Action", htmlValue));
+            }
         }
 
         function p15uploadCoreEx() {
@@ -6410,6 +6856,12 @@
             } else if (Q('d3coreMode').value == 7) {
                 // Upload a tiny core
                 meshserver.send({ action: 'uploadagentcore', nodeid: consoleNode._id, type: 'tiny' });
+            } else if (Q('d3coreMode').value == 8) {
+                // Restart MeshAgent service
+                meshserver.send({ action: 'msg', type: 'console', nodeid: consoleNode._id, value:'service restart' });
+            } else if (Q('d3coreMode').value == 9) {
+                // Update mesh agent
+                meshserver.send({ action: 'updateAgents', nodeids: [consoleNode._id] });
             }
         }
 
@@ -6419,7 +6871,7 @@
             Q('d3localmodeform').action = 'uploadmeshcorefile.ashx';
             Q('d3auth').value = authCookie;
             Q('d3attrib').value = currentNode._id;
-            setDialogMode(3, "Upload Mesh Agent Core", 3, p15uploadCoreEx2);
+            setDialogMode(4, "Upload Mesh Agent Core", 3, p15uploadCoreEx2);
             d3init();
         }
 
@@ -7168,7 +7620,7 @@
         function addLink(x, f) { return '<a style=cursor:pointer;text-decoration:none onclick=\'' + f + '\'>&diams; ' + x + '</a>'; }
         function addLinkConditional(x, f, c) { if (c) return addLink(x, f); return x; }
         function addKeyLink(x, f) { return '<span tabindex=0 style=cursor:pointer;text-decoration:none onclick=' + f + ' onkeypress="if (event.key==\'Enter\') { ' + f + ' } ">' + x + ' <img class=hoverButton src=images/key16.png></span>'; }
-        function addKeyLinkConditional(x, f, c) { if (c) return addKeyLink(x, f); return x; }
+        function addKeyLinkConditional(x, t, c) { if (c) return '<span title=\'' + t + '\'>' + x + ' <img class=hoverButton src=images/key16.png></span>'; return x }
         function passwordcheck(p) { var re = /(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#$%^&*()]).{8,}/; return re.test(p); }
         function getFileSizeStr(size) { if (typeof size != 'number') { size = 0; } if (size == 1) return "1 byte"; return format('{0} bytes', size); }
         function joinPaths() { var x = []; for (var i in arguments) { var w = arguments[i]; if ((w != null) && (w != '')) { while (w.endsWith('/') || w.endsWith('\\')) { w = w.substring(0, w.length - 1); } while (w.startsWith('/') || w.startsWith('\\')) { w = w.substring(1); } x.push(w); } } return x.join('/'); }
@@ -7179,7 +7631,16 @@
         function printDateTime(d) { return d.toLocaleString(args.locale); }
         function format(format) { var args = Array.prototype.slice.call(arguments, 1); return format.replace(/{(\d+)}/g, function (match, number) { return typeof args[number] != 'undefined' ? args[number] : match; }); };
         function nobreak(x) { return x.split(' ').join('&nbsp;'); }
-        function getUserName(userid) { if (users && users[userid] != null) return users[userid].name; return userid.split('/')[2]; }
+        function getUserName(userid) { 
+            var useridsplit = userid.split('/'), userid2 = useridsplit[0] + '/' + useridsplit[1] + '/' + useridsplit[2], guestname = '';
+            if ((useridsplit.length == 4) && (useridsplit[3].startsWith('guest:'))) { guestname = ' - ' + decode_utf8(atob(useridsplit[3].substring(6))); }
+            if (users && users[userid2] != null) { if (users[userid2].realname != null) return (users[userid2].realname + guestname); else return (users[userid2].name + guestname); }
+            if (currentNode && currentNode.links && currentNode.links[userid] && currentNode.links[userid].name != null) { return (currentNode.links[userid].name + guestname); }
+            if (userid == userinfo._id) { return (userinfo.name + guestname); }
+            if (nodes) { for (var a in nodes) { if (nodes[a].links) { for (var b in nodes[a].links) { if (nodes[a].links[b].name && b == userid) return (nodes[a].links[b].name + guestname); } } } }
+            if (meshes) { for (var a in meshes) { if (meshes[a].links) { for (var b in meshes[a].links) { if (meshes[a].links[b].name && b == userid) return (meshes[a].links[b].name + guestname); } } } }
+            return (useridsplit[2] + guestname);
+        }
         function addDetailItem(title, value, state) { return '<table style=width:100%><td>' + nobreak(title) + '<td style=text-align:right>' + value + '</table>'; }
         function isPrivateIP(a) { return (a.startsWith('10.') || a.startsWith('172.16.') || a.startsWith('192.168.')); }
         function encodeURIComponentEx(txt) { return encodeURIComponent(txt).replace(/'/g, '%27'); };

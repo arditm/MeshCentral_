@@ -114,6 +114,11 @@ CheckInstallAgent() {
           # RaspberryPi 3B+ running Ubuntu 64 (aarch64)
           machineid=26
         fi
+        if [ $machinetype == 'riscv64' ]
+        then
+          # RISC-V 64 bit
+          machineid=45
+        fi
         # Add more machine types, detect KVM support... here.
       fi
 

@@ -22,10 +22,12 @@
         },
         "mongoDb": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "Add this section to connect MeshCentral to a MongoDB database instance. Set to the MongoDB connection string. For example 'mongodb://localhost:27017/meshcentral'."
         },
         "mongoDbName": {
-          "type": "string"
+          "type": "string",
+          "description": "Name of the MongoDB database used."
         },
         "mongoDbChangeStream": {
           "type": "boolean",
@@ -94,9 +96,41 @@
           }
         },
         "sqlite3": {
-          "type": "boolean",
+          "type": [ "boolean", "string", "object" ],
           "default": false,
-          "description": "Set true to use SQLite3 as a local MeshCentral database."
+          "description": "Set boolean true to use SQLite3 as a local MeshCentral database with default db filename 'meshcentral' or enter a string for a different db filename. Extension .sqlite is appended",
+          "properties":{
+            "name": {
+              "type": "string",
+              "default": "meshcentral",
+              "description": "Database filename. '.sqlite' is appended"
+            },
+            "journalMode": {
+              "type": "string",
+              "default": "delete",
+              "description": "DELETE, TRUNCATE, PERSIST, MEMORY, WAL. NONE not allowed. See: https://www.sqlite.org/pragma.html#pragma_journal_mode"
+            },
+            "journalSize": {
+              "type": "integer",
+              "default": 4096000,
+              "description": "Maximum size of the journal file in bytes. Can grow larger if needed, but will shrink to this size. -1 is unlimited growth. See: https://www.sqlite.org/pragma.html#pragma_journal_size_limit"
+            },
+            "autoVacuum": {
+              "type": "string",
+              "default": "incremental",
+              "description": "none, full, incremental. Removes unused pages and shrinks databasefile during maintenance. See: https://www.sqlite.org/pragma.html#pragma_auto_vacuum"
+            },
+            "incrementalVacuum": {
+              "type": "integer",
+              "default": 100,
+              "description": "Maximum amount of pages to free during maintenance. Default page size is 4k, so default frees up to 400k from the databasefile. See: https://www.sqlite.org/pragma.html#pragma_incremental_vacuum"
+            },
+            "startupVacuum": {
+              "type": "boolean",
+              "default": false,
+              "description": "Do a full VACUUM at startup. Shrinks the db file and optimizes it. This can take some time with a large database and can temporarily take up to double the database size on disk. See: https://www.sqlite.org/lang_vacuum.html"
+            }
+          }
         },
         "mySQL": {
           "type": "object",
@@ -246,6 +280,7 @@
         },
         "dbExpire": {
           "type": "object",
+          "description": "Amount of time to keep various events in the database, in seconds. Below are the default values",
           "properties": {
             "events": {
               "type": "integer",
@@ -488,11 +523,6 @@
           "default": true,
           "description": "When enabled, MeshCentral will automatically monitor and manage Intel AMT devices."
         },
-        "orphanAgentUser": {
-          "type": "string",
-          "default": null,
-          "description": "If an agent attempts to connect to a unknown device group, automatically create a new device group and grant access to the specified user. Example: admin"
-        },
         "agentIdleTimeout": {
           "type": "integer",
           "minimum": 1,
@@ -506,8 +536,8 @@
         },
         "compression": {
           "type": "boolean",
-          "default": true,
-          "description": "Enables GZIP compression for web requests."
+          "default": false,
+          "description": "Enables GZIP compression for web requests. Disabled by default."
         },
         "wsCompression": {
           "type": "boolean",
@@ -516,7 +546,7 @@
         },
         "agentWsCompression": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Enables agent-side, websocket per-message deflate compression. wscompression must also be true for this to work."
         },
         "noAgentUpdate": {
@@ -545,14 +575,17 @@
           "description": "Set to false to disable agent multicast scanning on the local network, this is already disabled in WAN mode."
         },
         "meshErrorLogPath": {
-          "type": "string"
+          "type": "string",
+          "description": "Path to the MeshCentral error log file."
         },
         "npmPath": {
-          "type": "string"
+          "type": "string",
+          "description": "Path to the npm executable."
         },
         "npmProxy": {
           "type": "string",
-          "format": "uri"
+          "format": "uri",
+          "description": "HTTP proxy to use when downloading npm packages."
         },
         "allowHighQualityDesktop": {
           "type": "boolean",
@@ -608,7 +641,7 @@
             "array"
           ],
           "default": null,
-          "description": "When set, only users from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+          "description": "When set, only users from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:userAllowedIP.txt\""
         },
         "userBlockedIP": {
           "type": [
@@ -616,7 +649,7 @@
             "array"
           ],
           "default": null,
-          "description": "When set, users from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+          "description": "When set, users from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:userBlockedIP.txt\""
         },
         "agentAllowedIP": {
           "type": [
@@ -624,7 +657,7 @@
             "array"
           ],
           "default": null,
-          "description": "When set, only agents from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+          "description": "When set, only agents from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:agentAllowedIP.txt\""
         },
         "agentBlockedIP": {
           "type": [
@@ -632,7 +665,7 @@
             "array"
           ],
           "default": null,
-          "description": "When set, agents from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+          "description": "When set, agents from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:agentBlockedIP.txt\""
         },
         "authLog": {
           "type": "string",
@@ -653,7 +686,7 @@
           "items": {
             "type": "string"
           },
-          "description": "Users in this list are allowed to see and manage all device groups within their domain."
+          "description": "Users in this list are allowed to see and manage all device groups within their domain. For example ['user//billybob','user//fred'] would allow billybob and fred to manage all device groups from all users in their domain."
         },
         "manageCrossDomain": {
           "type": "array",
@@ -661,17 +694,19 @@
           "items": {
             "type": "string"
           },
-          "description": "Users in this list are allowed to manage all users in all domains."
+          "description": "Users in this list are allowed to manage all users in all domains. For example ['user//billybob','user/subdomain/fred'] would allow billybob to manage all users in all domains."
         },
         "localDiscovery": {
           "type": "object",
           "description": "When this server is in LAN mode, you may discover this server using a multicast discovery tool. When discovery happens, the name and info fields are sent back to the discovery tool.",
           "properties": {
             "name": {
-              "type": "string"
+              "type": "string",
+              "description": "The name of the server."
             },
             "info": {
-              "type": "string"
+              "type": "string",
+              "description": "The information about the server."
             },
             "key": {
               "type": "string",
@@ -718,17 +753,20 @@
         },
         "mpsPortBind": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "When set, bind the MPS port to a specific network address."
         },
         "mpsAliasPort": {
           "type": "integer",
           "minimum": 1,
           "maximum": 65535,
-          "default": null
+          "default": null,
+          "description": "The actual MPS port as seen externally on the Internet, this setting is often used when a reverse-proxy is used."
         },
         "mpsAliasHost": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "When set, the MPS port is ignored and the MPS is accessed using this DNS name."
         },
         "mpsTlsOffload": {
           "type": "boolean",
@@ -740,25 +778,43 @@
           "default": false,
           "description": "When set to true, the MPS server will only accept TLS 1.2 and 1.3 connections. Older Intel AMT devices will not be able to connect."
         },
+        "prometheus": {
+          "type": [
+            "boolean",
+            "number"
+          ],
+          "default": false,
+          "description": "When set to true, a prometheus metrics endpoint will be available \"0.0.0.0:9464/metrics\". If you specify a number instead, the prometheus metrics will listen on this port instead of the default 9464."
+        },
         "no2FactorAuth": {
           "type": "boolean",
-          "default": false
+          "default": false,
+          "description": "When set to true, disables two-factor authentication for all users."
+        },
+        "debug": {
+          "type": "string",
+          "default": null,
+          "description": "You can set this value in the format 'web,agent,relay', where each value is separated by a comma. Each specified value will output logs to the MeshCentral console. Setting it to '*' will output all logs."
         },
         "log": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "You can set this value in the format 'web,agent,relay', where each value is separated by a comma. Each specified value will output logs to a file named 'log.txt' located inside the 'meshcentral-data' folder. Setting it to '*' will output all logs."
         },
         "syslog": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "Send syslog events to a target hostname:port. For example: localhost:514"
         },
         "syslogauth": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "Send syslog events to a target hostname:port with authentication. For example: user:password@localhost:514"
         },
         "syslogjson": {
           "type": "string",
-          "default": null
+          "default": null,
+          "description": "Send syslog events in JSON format to a target hostname:port. For example: localhost:514"
         },
         "syslogtcp": {
           "type": "string",
@@ -767,7 +823,7 @@
         },
         "webrtcConfig": {
           "type": "object",
-          "description": "The STUN servers used for WebRTC, if not specified the Google and Mozilla servers and used when the server is not in LAN mode.",
+          "description": "The STUN/TURN servers used for WebRTC, if not specified the Google and Cloudflare STUN servers are used when the server is not in LAN mode.",
           "properties": {
             "iceServers": {
               "type": "array",
@@ -776,7 +832,8 @@
                 "type": "object",
                 "properties": {
                   "urls": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "STUN/TURN URLs, examples are stun:stun3.l.google.com:19302 or turn:openrelay.metered.ca:443"
                   }
                 },
                 "required": [
@@ -818,38 +875,86 @@
           ]
         },
         "autoBackup": {
-          "type": "object",
-          "description": "Enable automatic backups of your meshcentral-data",
+          "type": [
+            "boolean",
+            "object"
+          ],
+          "description": "Enabled by default or if set to true. Disabled if set to false. An object can be provided with additional properties to set autobackup options.",
           "properties": {
             "mongoDumpPath": {
               "type": "string",
               "default": "mongodump",
               "description": "The file path of where \"mongodump\" is located. Default is \"mongodump\""
             },
+            "mongoDumpArgs": {
+              "type": "string",
+              "description": "Override the default mongodump --uri=<mongoDb>. The --db= option is automatically appended if omitted. (f.e. --host=127.0.0.1 --username=someUser --password=PaSsWORD --authenticationDatabase=admin)"
+            },    
             "mysqlDumpPath": {
               "type": "string",
               "default": "mysqldump",
               "description": "The file path of where \"mysqldump\" is located. Default is \"mysqldump\""
+            },
+            "pgDumpPath": {
+              "type": "string",
+              "default": "pg_dump",
+              "description": "The file path of where \"pg_dump\" is located. Default is \"pg_dump\""
             },
             "backupIntervalHours": {
               "type": "integer",
               "default": 24,
               "description": "How often should the autobackup run in hours from the second meshcentral starts up? Default is every 24 hours"
             },
+            "backupHour": {
+              "type": "integer",
+              "default": 0,
+              "description": "At which hour the autobackup should run. This forces a daily backup, overrules a custom 'backupIntervalHours'."
+            },
             "keepLastDaysBackup": {
               "type": "integer",
               "default": 10,
               "description": "How many days of backups should the autobackup keep? Default is 10 Days worth"
             },
+            "zipCompression" : {
+              "type": "integer",
+              "default": "5",
+              "description": "Set the zip compression level, 1=fast/less small file to 9=slow/smallest file."
+            },
             "zipPassword": {
               "type": "string",
-              "default": null,
-              "description": "When specified, the ZIP backups will be password protected with the zipPassword"
+              "default": "",
+              "minLength": 1,
+              "description": "When specified, the ZIP backups will be password protected with the zipPassword and the password cannot be a blank value"
             },
             "backupPath": {
               "type": "string",
               "default": "meshcentral-backups",
               "description": "The file path where backup files are kept. The default is \"meshcentral-backups\" which sits next to \"meshcentral-data\"."
+            },
+            "backupName": {
+              "type": "string",
+              "default": "meshcentral-autobackup-",
+              "description": "The filename of the backupfile. The default is \"meshcentral-autobackup-\", the filename is appended with the time of backup."
+            },
+            "backupWebFolders": {
+              "type": "boolean",
+              "default": false,
+              "description": "Add views, public and emails directories if overridden"
+            },
+            "backupOtherFolders": {
+              "type": "boolean",
+              "default": false,
+              "description": "Also add files and recordings folder to the backup"
+            },
+            "backupIgnoreFilesGlob": {
+              "type": "array",
+              "default": [],
+              "description": "Glob for ignoring files in the data directory. For example [\"**/*.log\"] !! If a string instead of an array is passed, it will be split by ',' so *{.txt,.log} won't work in that case !! Don't do string..."
+            },
+            "backupSkipFoldersGlob":{
+              "type": "array",
+              "default": [],
+              "description": "Glob for ignoring directories in the data directory. For example [\"**/signedagents\"]"
             },
             "googleDrive": {
               "type": "object",
@@ -892,6 +997,54 @@
                   "type": "integer",
                   "default": null,
                   "description": "The maximum number of files to keep in the WebDAV folder, older files will be removed if needed."
+                }
+              }
+            },
+            "s3": {
+              "type": "object",
+              "description": "Enabled automated upload of the server backups to an S3 server.",
+              "required": [
+                "accessKey",
+                "secretKey",
+                "bucketName"
+              ],
+              "properties": {
+                "endpoint": {
+                  "type": "string",
+                  "default": "s3.amazonaws.com",
+                  "description": "S3 Endpoint address e.g. myS3.myserver.com"
+                },
+                "accessKey": {
+                  "type": "string",
+                  "description": "S3 accessKey, Required"
+                },
+                "secretKey": {
+                  "type": "string",
+                  "description": "S3 secretKey, Required"
+                },
+                "port": {
+                  "type": "integer",
+                  "default": 443,
+                  "description": "S3 Endpoint port number, Default is 443"
+                },
+                "ssl": {
+                  "type": "boolean",
+                  "default": true,
+                  "description": "If \"true\", the S3 Endpoint will use \"https\", else it will use \"http\", Default is true"
+                },
+                "bucketName": {
+                  "type": "string",
+                  "description": "S3 Bucket Name, Required"
+                },
+                "folderName": {
+                  "type": "string",
+                  "default": "MeshCentral-Backups",
+                  "description": "The name of the folder to create in the S3 Bucket. Defaults to \"MeshCentral-Backups\"."
+                },
+                "maxFiles": {
+                  "type": "integer",
+                  "default": 0,
+                  "description": "The maximum number of files to keep in the S3 folder, older files will be removed if needed. Default is 0 which is keep everything."
                 }
               }
             }
@@ -1000,6 +1153,24 @@
           "required": [
             "enabled"
           ]
+        },
+        "watchdog": {
+          "type": "object",
+          "required": [
+            "interval",
+            "timeout"
+          ],
+          "description": "This is used to monitor if NodeJS is servicing IO correctly or getting held up a lot. You MUST specify \"interval\" and \"timeout\".",
+          "properties": {
+            "interval": {
+              "type": "number",
+              "description": " This will check every X ms"
+            },
+            "timeout": {
+              "type": "number",
+              "description": " If the timer is more than X ms late, it will warn to console AND mesherrors.txt"
+            }
+          }
         }
       }
     },
@@ -1019,7 +1190,12 @@
           "siteStyle": {
             "type": "integer",
             "default": 2,
-            "description": "Valid numbers are 1 and 2, changes the style of the login page and some secondary pages."
+            "description": "Valid numbers are 1, 2 or 3. Changes the style of the login page and some secondary pages. 3 is the new Bootstrap style"
+          },
+          "showModernUIToggle": {
+            "type": "boolean",
+            "default": false,
+            "description": "When set to true, the user will be able to toggle between the modern and classic UI."
           },
           "title": {
             "type": "string",
@@ -1041,6 +1217,11 @@
             "default": null,
             "description": "Web site .png logo file placed in meshcentral-data that used on the login page when sitestyle is 2."
           },
+          "pwaLogo": {
+            "type": "string",
+            "default": null,
+            "description": "Web site .png logo file that is 512x512 in size placed in meshcentral-data that is used for PWA installs on iOS and Android."
+          },
           "rootRedirect": {
             "type": "string",
             "default": null,
@@ -1050,6 +1231,19 @@
             "type": "boolean",
             "default": true,
             "description": "When set to false, this setting will disable the mobile site."
+          },
+          "orphanAgentUser": {
+            "type": "string",
+            "default": null,
+            "description": "If an agent attempts to connect to a unknown device group, automatically create a new device group and grant access to the specified user. Example: admin"
+          },
+          "manageAllDeviceGroups": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "Users in this list are allowed to see and manage all device groups within their domain. For example ['billybob','fred'] would allow billybob and fred to manage all device groups from all users in their domain."
           },
           "maxDeviceView": {
             "type": "integer",
@@ -1072,10 +1266,12 @@
             "description": "If true, a Scroll To Top button in the devices tab."
           },
           "userQuota": {
-            "type": "integer"
+            "type": "integer",
+            "description": "This is the maximum amount of data in kilobytes that can be placed in the “My Files” tab for a user account."
           },
           "meshQuota": {
-            "type": "integer"
+            "type": "integer",
+            "description": "This is the maximum amount of data in kilobytes that can be placed in the “My Files” tab for a given mesh"
           },
           "loginKey": {
             "type": [
@@ -1129,7 +1325,8 @@
             "uniqueItems": true,
             "items": {
               "type": "string"
-            }
+            },
+            "description": "When set, new accounts will be added to these groups." 
           },
           "userNameIsEmail": {
             "type": "boolean",
@@ -1141,14 +1338,19 @@
             "uniqueItems": true,
             "items": {
               "type": "string"
-            }
+            },
+            "description": "When set, new accounts will only be created for email addresses that match these domains."
           },
           "newAccountsRights": {
-            "type": "array",
+            "type": [
+              "array",
+              "string"
+            ],
             "uniqueItems": true,
             "items": {
               "type": "string"
-            }
+            },
+            "description": "When set, new accounts will be added to these siteadmin rights."
           },
           "allowedOrigin": {
             "type": [
@@ -1203,7 +1405,7 @@
           "allowSavingDeviceCredentials": {
             "type": "boolean",
             "default": true,
-            "description": "Allow users to save SSH, RDP, VNC device credentials on the server that can be used by any other user."
+            "description": "Allow users to save SSH, RDP, VNC device credentials in the server."
           },
           "trustedCert": {
             "type": "boolean",
@@ -1515,6 +1717,11 @@
                 "default": true,
                 "description": "Set to false to disable SMS 2FA."
               },
+              "duo2factor": {
+                "type": "boolean",
+                "default": true,
+                "description": "Set to false to disable Duo 2FA."
+              },
               "push2factor": {
                 "type": "boolean",
                 "default": true,
@@ -1701,6 +1908,11 @@
             "default": false,
             "description": "When enabled, this will show the notes panel in the device view"
           },
+          "userSessionsSort": {
+            "type": "string",
+            "default": "SessionId",
+            "description": "Arrange the Connect sessions offered when multiple Terminal Sessions are present by 'SessionId', 'StationName' or 'Username' with 'SessionId' as the default sorting criteria."
+          },
           "agentInviteCodes": {
             "type": "boolean",
             "default": false,
@@ -1742,6 +1954,11 @@
             "default": false,
             "description": "Enables the geo-location feature and device location map in the user interface, this feature is not being worked on."
           },
+          "ipLocation": {
+            "type": "boolean",
+            "default": false,
+            "description": "When enabled, the remote agents will submit there approximate location to MeshCentral, Use in combination with \"geoLocation\"."
+          },
           "novnc": {
             "type": "boolean",
             "default": true,
@@ -1749,7 +1966,7 @@
           },
           "mstsc": {
             "type": "boolean",
-            "default": false,
+            "default": true,
             "description": "When enabled, activates the built-in web-based RDP client."
           },
           "ssh": {
@@ -1769,16 +1986,20 @@
             "description": "This section is used to customize user consent prompts, these show up when asking if a remote session is allowed or not.",
             "properties": {
               "Title": {
-                "type": "string"
+                "type": "string",
+                "description": "Title of the consent message."
               },
               "Desktop": {
-                "type": "string"
+                "type": "string",
+                "description": "Consent message that is shown when a remote desktop session is connected, you can use {0} to represent the realname and {1} to represent the username."
               },
               "Terminal": {
-                "type": "string"
+                "type": "string",
+                "description": "Consent message that is shown when a remote terminal session is connected, you can use {0} to represent the realname and {1} to represent the username."
               },
               "Files": {
-                "type": "string"
+                "type": "string",
+                "description": "Consent message that is shown when a remote file session is connected, you can use {0} to represent the realname and {1} to represent the username."
               },
               "consentTimeout": {
                 "type": "integer",
@@ -1789,6 +2010,16 @@
                 "type": "boolean",
                 "default": false,
                 "description": "If true, user consent is accepted after the timeout."
+              },
+              "autoAcceptIfNoUser": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, user consent is accepted if no user is logged in."
+              },
+              "oldStyle": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true, user consent will be shown in an old style prompt box rather than the new style consent-box."
               }
             }
           },
@@ -1797,16 +2028,20 @@
             "description": "This section is user to customize user notifications when a remote desktop, terminal or file session is connected to a remote system.",
             "properties": {
               "Title": {
-                "type": "string"
+                "type": "string",
+                "description": "Title of the notification message."
               },
               "Desktop": {
-                "type": "string"
+                "type": "string",
+                "description": "Message to show when a remote desktop session is connected, you can use {0} to represent the realname and {1} to represent the username."
               },
               "Terminal": {
-                "type": "string"
+                "type": "string",
+                "description": "Message to show when a remote terminal session is connected, you can use {0} to represent the realname and {1} to represent the username."
               },
               "Files": {
-                "type": "string"
+                "type": "string",
+                "description": "Message to show when a remote file session is connected, you can use {0} to represent the realname and {1} to represent the username."
               }
             }
           },
@@ -1957,7 +2192,7 @@
               "array"
             ],
             "default": null,
-            "description": "When set, only users from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+            "description": "When set, only users from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:userAllowedIP.txt\""
           },
           "userBlockedIP": {
             "type": [
@@ -1965,7 +2200,7 @@
               "array"
             ],
             "default": null,
-            "description": "When set, users from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+            "description": "When set, users from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\"  \"file:userBlockedIP.txt\""
           },
           "agentAllowedIP": {
             "type": [
@@ -1973,7 +2208,7 @@
               "array"
             ],
             "default": null,
-            "description": "When set, only agents from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+            "description": "When set, only agents from allowed IP address ranges can connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:agentAllowedIP.txt\""
           },
           "agentBlockedIP": {
             "type": [
@@ -1981,12 +2216,17 @@
               "array"
             ],
             "default": null,
-            "description": "When set, agents from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\""
+            "description": "When set, agents from these denied IP address ranges will not be able to connect to the server. Example: \"192.168.2.100,192.168.1.0/24\" \"file:agentBlockedIP.txt\""
           },
           "userSessionIdleTimeout": {
             "type": "integer",
             "default": null,
             "description": "When set, idle users will be disconnected after a set amounts of minutes."
+          },
+          "logoutOnIdleSessionTimeout": {
+            "type": "boolean",
+            "default": true,
+            "description": "Determines whether MeshCentral should logout after the session idle timeout elapsed or should just disconnect remote desktop, terminal and files."
           },
           "userConsentFlags": {
             "type": "object",
@@ -2097,7 +2337,7 @@
                   "login"
                 ],
                 "default": "any",
-                "description": "Indicate what terminal options are available when the user clicks the right mouse button on the terminal connect button."
+                "description": "Indicates the default linux terminal thats used when the user clicks the terminal connect button and disables the right mouse button on the terminal connect button when this is set."
               },
               "launchCommand": {
                 "type": "object",
@@ -2146,12 +2386,12 @@
               "TlsConnections": {
                 "type": "boolean",
                 "default": true,
-                "description": "When set to false, MeshCentral will use TLS to connect to Intel AMT, this is not recommended."
+                "description": "When set to false, MeshCentral will NOT use TLS to connect to Intel AMT, this is not recommended."
               },
               "TlsAcmActivation": {
                 "type": "boolean",
                 "default": false,
-                "description": "When set to false, MeshCentral will not attempt a TLS ACM activation on Intel AMT v14+"
+                "description": "When set to true, MeshCentral will attempt a TLS ACM activation on Intel AMT v14+"
               },
               "AdminAccounts": {
                 "description": "List of username and passwords to try when connecting to Intel AMT.",
@@ -2470,10 +2710,7 @@
                   }
                 }
               }
-            },
-            "required": [
-              "certs"
-            ]
+            }
           },
           "amtAcmActivation": {
             "type": "object",
@@ -2520,18 +2757,42 @@
             },
             "description": "This is used to create HTTP redirections. For example setting \"redirects\": { \"example\":\"https://example.com\" } will make it so that anyone accessing /example on the server will get redirected to the specified URL."
           },
-          "yubikey": {
+          "duo2factor": {
             "type": "object",
             "properties": {
+              "integrationkey": {
+                "type": "string",
+                "default": "",
+                "description": "Integration key from Duo"
+              },
+              "secretkey": {
+                "type": "string",
+                "default": "",
+                "description": "Secret key from Duo"
+              },
+              "apihostname": {
+                "type": "string",
+                "default": "",
+                "description": "API Hostname from Duo"
+              }
+            }
+          },
+          "yubikey": {
+            "type": "object",
+            "description": "Yubikey configuration",
+            "properties": {
               "id": {
-                "type": "string"
+                "type": "string",
+                "description": "Yubikey client ID"
               },
               "secret": {
-                "type": "string"
+                "type": "string",
+                "description": "Yubikey secret key"
               },
               "proxy": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "description": "Yubikey proxy URL"
               }
             },
             "required": [
@@ -2543,7 +2804,8 @@
             "type": "object",
             "additionalProperties": {
               "type": "string"
-            }
+            },
+            "description": "This is used to add custom HTTP headers to all responses. For example setting \"httpHeaders\": { \"X-Frame-Options\":\"DENY\" } will add the X-Frame-Options header to all responses."
           },
           "agentConfig": {
             "type": "array",
@@ -2580,6 +2842,7 @@
           },
           "sessionRecording": {
             "type": "object",
+            "description": "Values that affect the session recording feature",
             "properties": {
               "onlySelectedUsers": {
                 "type": "boolean",
@@ -2627,7 +2890,7 @@
                 "items": {
                   "type": "integer"
                 },
-                "description": "This is an array: 1 = Terminal, 2 = Desktop, 5 = Files, 100 = Intel AMT WSMAN, 101 = Intel AMT Redirection, 200 = Messenger"
+                "description": "This is an array: 1 = Terminal, 2 = Desktop, 5 = Files, 6 = Admin Powershell, 8 = User Shell, 9 = User Powershell, 100 = Intel AMT WSMAN, 101 = Intel AMT Redirection, 200 = Messenger"
               }
             },
             "required": [
@@ -2677,7 +2940,7 @@
               "name": {
                 "type": "string",
                 "format": "hostname",
-                "description": "Optional hostname of the client, this defaults to the hostname of the machine. This is useful for SMTP relays."
+                "description": "Optional hostname of the client, this defaults to the hostname of the machine. This is useful for SMTP relays. This can also be set to \"console\" for console output debugging."
               },
               "host": {
                 "type": "string",
@@ -2688,27 +2951,47 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 65535,
-                "description": "SMTP server port number."
+                "default": 587,
+                "description": "SMTP server port number. This defaults to 587 if \"tls\" is false or 465 if \"tls\" is true)"
               },
               "from": {
                 "type": "string",
                 "format": "email",
                 "description": "Email address used in the messages from field."
               },
+              "user": {
+                "type": "string",
+                "description": "SMTP username."
+              },
+              "pass": {
+                "type": "string",
+                "description": "SMTP password."
+              },
               "tls": {
-                "type": "boolean"
+                "type": "boolean",
+                "default": false,
+                "description": "Set SMTP to use TLS on connections, the default is false"
               },
               "auth": {
                 "type": "object",
+                "description": "This is used for OAuth2 authentication",
                 "properties": {
                   "clientId": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "OAuth2 client ID"
                   },
                   "clientSecret": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "OAuth2 client secret"
                   },
                   "refreshToken": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "OAuth2 refresh token"
+                  },
+                  "type": {
+                    "type": "string",
+                    "default": "login",
+                    "description": "Setting this indicates the authetication type, 'login' as default or 'oauth2'"
                   }
                 },
                 "required": [
@@ -2718,10 +3001,12 @@
                 ]
               },
               "tlscertcheck": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When set to false, the SMTP server certificate is not checked."
               },
               "tlsstrict": {
-                "type": "boolean"
+                "type": "boolean",
+                "description": "When set to true, the SMTP server certificate must be valid and signed by a trusted CA."
               },
               "verifyemail": {
                 "type": "boolean",
@@ -2735,7 +3020,10 @@
               }
             },
             "required": [
-              "from"
+              "host",
+              "port",
+              "from",
+              "tls"
             ]
           },
           "sendmail": {
@@ -2770,30 +3058,48 @@
           },
           "authStrategies": {
             "type": "object",
+            "description": "Authentication strategies for MeshCentral",
             "properties": {
               "twitter": {
                 "type": "object",
+                "description": "Twitter authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that Twitter will redirect to after authentication."
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with Twitter."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "When set, new accounts will be created for users that authenticate with Twitter and added to the specified groups."
+                  },
+                  "newAccountsRights": {
+                    "type": [
+                      "array",
+                      "string"
+                    ],
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
                   },
                   "clientid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Twitter client ID."
                   },
                   "clientsecret": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Twitter client secret."
                   },
                   "logouturl": {
                     "type": "string",
@@ -2808,27 +3114,44 @@
               },
               "google": {
                 "type": "object",
+                "description": "Google authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that Google will redirect to after authentication."
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with Google."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "When set, new accounts will be created for users that authenticate with Google and added to the specified groups."
+                  },
+                  "newAccountsRights": {
+                    "type": [
+                      "array",
+                      "string"
+                    ],
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
                   },
                   "clientid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Google client ID."
                   },
                   "clientsecret": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Google client secret."
                   },
                   "logouturl": {
                     "type": "string",
@@ -2843,27 +3166,44 @@
               },
               "github": {
                 "type": "object",
+                "description": "GitHub authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that GitHub will redirect to after authentication."
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with GitHub."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
                     "uniqueItems": true,
+                    "description": "When set, new accounts will be created for users that authenticate with GitHub and added to the specified groups.",
                     "items": {
                       "type": "string"
                     }
                   },
+                  "newAccountsRights": {
+                    "type": [
+                      "array",
+                      "string"
+                    ],
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
+                  },
                   "clientid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "GitHub client ID."
                   },
                   "clientsecret": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "GitHub client secret."
                   },
                   "logouturl": {
                     "type": "string",
@@ -2878,30 +3218,48 @@
               },
               "azure": {
                 "type": "object",
+                "description": "Azure authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that Azure will redirect to after authentication."
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with Azure."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
+                    "description": "When set, new accounts will be created for users that authenticate with Azure and added to the specified groups.",  
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
                     }
                   },
+                  "newAccountsRights": {
+                    "type": [
+                      "array",
+                      "string"
+                    ],
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
+                  },
                   "clientid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Azure client ID."
                   },
                   "clientsecret": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Azure client secret."
                   },
                   "tenantid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "Azure tenant ID."
                   },
                   "logouturl": {
                     "type": "string",
@@ -2917,31 +3275,49 @@
               },
               "jumpcloud": {
                 "type": "object",
+                "description": "JumpCloud authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that JumpCloud will redirect to after authentication."
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with JumpCloud."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
+                    "description": "When set, new accounts will be created for users that authenticate with JumpCloud and added to the specified groups.",
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
                     }
                   },
+                  "newAccountsRights": {
+                    "type": [
+                      "array",
+                      "string"
+                    ],
+                    "uniqueItems": true,
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
+                  },
                   "entityid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "JumpCloud entity ID."
                   },
                   "idpurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "JumpCloud IDP URL."
                   },
                   "cert": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "JumpCloud certificate."
                   },
                   "logouturl": {
                     "type": "string",
@@ -2957,41 +3333,54 @@
               },
               "saml": {
                 "type": "object",
+                "description": "SAML authentication",
                 "properties": {
                   "callbackurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "The URL that SAML will redirect to after authentication."
                   },
                   "disableRequestedAuthnContext": {
-                    "type": "boolean"
+                    "type": "boolean",
+                    "description": "When set, the requestedAuthnContext will be disabled.",
+                    "default": false
                   },
                   "newAccounts": {
                     "type": "boolean",
-                    "default": false
+                    "default": false,
+                    "description": "When set, new accounts will be created for users that authenticate with SAML."
                   },
                   "newAccountsUserGroups": {
                     "type": "array",
                     "uniqueItems": true,
+                    "description": "When set, new accounts will be created for users that authenticate with SAML and added to the specified groups.",
                     "items": {
                       "type": "string"
                     }
                   },
                   "newAccountsRights": {
-                    "type": "array",
+                    "type": [
+                      "array",
+                      "string"
+                    ],
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
                   },
                   "entityid": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "SAML entity ID."
                   },
                   "idpurl": {
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri",
+                    "description": "SAML IDP URL."
                   },
                   "cert": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "SAML certificate."
                   },
                   "logouturl": {
                     "type": "string",
@@ -3034,7 +3423,6 @@
                     ]
                   }
                 ],
-                "additionalProperties": false,
                 "properties": {
                   "newAccounts": {
                     "type": "boolean",
@@ -3060,7 +3448,8 @@
                     "uniqueItems": true,
                     "items": {
                       "type": "string"
-                    }
+                    },
+                    "description": "When set, new accounts will be added to these siteadmin rights."
                   },
                   "clientid": {
                     "type": "string",
@@ -3242,8 +3631,7 @@
                     "required": [
                       "client_id",
                       "client_secret"
-                    ],
-                    "additionalProperties": false
+                    ]
                   },
                   "issuer": {
                     "type": [
@@ -3260,27 +3648,33 @@
                       },
                       "authorization_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to direct users to when logging in."
                       },
                       "token_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to direct users to when requesting tokens."
                       },
                       "jwks_uri": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to retrieve the JSON Web Key Set."
                       },
                       "userinfo_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to retrieve user information."
                       },
                       "revocation_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to direct users to when revoking tokens."
                       },
                       "introspection_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to direct users to when introspecting tokens."
                       },
                       "end_session_endpoint": {
                         "type": "string",
@@ -3289,52 +3683,64 @@
                       },
                       "registration_endpoint": {
                         "type": "string",
-                        "format": "uri"
+                        "format": "uri",
+                        "description": "URI to direct users to when registering a new client."
                       },
                       "token_endpoint_auth_methods_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported token endpoint authentication methods."
                       },
                       "token_endpoint_auth_signing_alg_values_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported token endpoint authentication signing algorithms."
                       },
                       "introspection_endpoint_auth_methods_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported introspection endpoint authentication methods."
                       },
                       "introspection_endpoint_auth_signing_alg_values_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported introspection endpoint authentication signing algorithms."
                       },
                       "revocation_endpoint_auth_methods_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported revocation endpoint authentication methods."
                       },
                       "revocation_endpoint_auth_signing_alg_values_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported revocation endpoint authentication signing algorithms."
                       },
                       "request_object_signing_alg_values_supported": {
-                        "type": "string"
+                        "type": "string",
+                        "description": "Supported request object signing algorithms."
                       },
                       "mtls_endpoint_aliases": {
                         "type": "object",
+                        "description": "MTLS endpoint aliases.",
                         "properties": {
                           "token_endpoint": {
                             "type": "string",
-                            "format": "uri"
+                            "format": "uri",
+                            "description": "URI to direct users to when requesting tokens."
                           },
                           "userinfo_endpoint": {
                             "type": "string",
-                            "format": "uri"
+                            "format": "uri",
+                            "description": "URI to retrieve user information."
                           },
                           "revocation_endpoint": {
                             "type": "string",
-                            "format": "uri"
+                            "format": "uri",
+                            "description": "URI to direct users to when revoking tokens."
                           },
                           "introspection_endpoint": {
                             "type": "string",
-                            "format": "uri"
+                            "format": "uri",
+                            "description": "URI to direct users to when introspecting tokens."
                           }
                         }
                       }
-                    },
-                    "additionalProperties": false
+                    }
                   },
                   "custom": {
                     "type": "object",
@@ -3358,20 +3764,25 @@
                       },
                       "claims": {
                         "type": "object",
+                        "description": "Custom claims to use.",
                         "properties": {
                           "email": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Custom claim to use for email."
                           },
                           "name": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Custom claim to use for name."
                           },
                           "uuid": {
-                            "type": "string"
+                            "type": "string",
+                            "description": "Custom claim to use for uuid."
                           }
                         }
                       },
                       "preset": {
                         "type": "string",
+                        "description": "Preset to use for OIDC configuration",
                         "enum": [
                           "azure",
                           "google"
@@ -3385,11 +3796,11 @@
                         "type": "string",
                         "description": "REQUIRED IF USING GROUPS: Customer ID from Google Workspace Admin Console (https://admin.google.com/ac/accountsettings/profile)"
                       }
-                    },
-                    "additionalProperties": false
+                    }
                   },
                   "groups": {
                     "type": "object",
+                    "description": "Group settings for OIDC",
                     "properties": {
                       "recursive": {
                         "type": "boolean",
@@ -3398,14 +3809,12 @@
                       },
                       "required": {
                         "type": [
-                          "string",
                           "array"
                         ],
                         "description": "Access is only granted to users who are a member of at least one of the listed required groups."
                       },
                       "siteadmin": {
                         "type": [
-                          "string",
                           "array"
                         ],
                         "description": "Full site admin priviledges will be granted to users who are a member of at least one of the listed admin groups."
@@ -3424,7 +3833,6 @@
                         "properties": {
                           "filter": {
                             "type": [
-                              "string",
                               "array"
                             ],
                             "description": "Only groups listed here are mirrored into MeshCentral user groups."
@@ -3441,8 +3849,7 @@
                         "default": "groups",
                         "description": "Custom claim to use."
                       }
-                    },
-                    "additionalProperties": false
+                    }
                   }
                 }
               }
@@ -3472,7 +3879,8 @@
           "description": "Email address of the administrator of this server. Make sure this is a valid email address otherwise the certificate request will fail."
         },
         "names": {
-          "type": "string"
+          "type": "string",
+          "description": "Comma separated list of DNS names that will be included in the certificate. The first name will be the primary name."
         },
         "skipChallengeVerification": {
           "type": "boolean",
@@ -3482,7 +3890,37 @@
         "production": {
           "type": "boolean",
           "default": false,
-          "description": "By default a test certificate will be obtained from Let's Encrypt. Always start by getting a test certificate and make sure that works before setting this to true and obtaining a production certificate. Making too many bad requests for a production certificate will get you banned for a long period of time."
+          "description": "By default a test certificate will be obtained from Let's Encrypt. Setting \"zerossl\", will ignore this setting. Always start by getting a test certificate and make sure that works before setting this to true and obtaining a production certificate. Making too many bad requests for a production certificate will get you banned for a long period of time."
+        },
+        "rsaKeySize": {
+          "type": "integer",
+          "default": 2048,
+          "description": "The size of the RSA key to generate. The default is 2048 bits."
+        },
+        "nochecks": {
+          "type": "boolean",
+          "default": false,
+          "description": "If you choose \"true\", MeshCentral won't verify if \"email\" is valid, has a valid MX record, AND if \"names\" doesn't contain a wildcard, can be resolved by DNS A/AAAA record."
+        },
+        "zerossl": {
+          "type": "object",
+          "description": "If this object is set, we will use ZeroSSL for SSL creation instead of Let's Encrypt",
+          "required": [
+            "kid",
+            "hmacKey"
+          ],
+          "properties": {
+            "kid": {
+              "type": "string",
+              "description": "EAB KID",
+              "default": ""
+            },
+            "hmackey": {
+              "type": "string",
+              "description": "EAB HMAC KEY",
+              "default": ""
+            }
+          }
         }
       },
       "required": [
@@ -3500,16 +3938,19 @@
       },
       "properties": {
         "serverId": {
-          "type": "string"
+          "type": "string",
+          "description": "Unique server identifier, must be unique across all servers."
         },
         "servers": {
           "type": "object",
+          "description": "List of peer servers.",
           "additionalProperties": {
             "type": "object",
             "properties": {
               "url": {
                 "type": "string",
-                "format": "uri"
+                "format": "uri",
+                "description": "URL of the peer server."
               }
             },
             "required": [
@@ -3553,33 +3994,88 @@
       "description": "Connects MeshCentral to a SMTP email server, allows MeshCentral to send email messages for 2FA or user notification.",
       "type": "object",
       "properties": {
+        "name": {
+          "type": "string",
+          "format": "hostname",
+          "description": "Optional hostname of the client, this defaults to the hostname of the machine. This is useful for SMTP relays. This can also be set to \"console\" for console output debugging."
+        },
         "host": {
           "type": "string",
-          "format": "hostname"
+          "format": "hostname",
+          "description": "Hostname of the SMTP server."
         },
         "port": {
           "type": "integer",
           "minimum": 1,
-          "maximum": 65535
+          "maximum": 65535,
+          "default": 587,
+          "description": "SMTP server port number. This defaults to 587 if \"tls\" is false or 465 if \"tls\" is true)"
         },
         "from": {
           "type": "string",
           "format": "email",
           "description": "Email address used in the messages from field."
         },
+        "user": {
+          "type": "string",
+          "description": "SMTP username."
+        },
+        "pass": {
+          "type": "string",
+          "description": "SMTP password."
+        },
         "tls": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false,
+          "description": "Set SMTP to use TLS on connections, the default is false"
+        },
+        "auth": {
+          "type": "object",
+          "description": "This is used for OAuth2 authentication",
+          "properties": {
+            "clientId": {
+              "type": "string",
+              "description": "OAuth2 client ID"
+            },
+            "clientSecret": {
+              "type": "string",
+              "description": "OAuth2 client secret"
+            },
+            "refreshToken": {
+              "type": "string",
+              "description": "OAuth2 refresh token"
+            },
+            "type": {
+              "type": "string",
+              "default": "login",
+              "description": "Setting this indicates the authetication type, 'login' as default or 'oauth2'"
+            }
+          },
+          "required": [
+            "clientId",
+            "clientSecret",
+            "refreshToken"
+          ]
         },
         "tlscertcheck": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": true,
+          "description": "When set to false, the SMTP server certificate is not checked."
         },
         "tlsstrict": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false,
+          "description": "When set to true, the SMTP server certificate must be valid and signed by a trusted CA."
         },
         "verifyemail": {
           "type": "boolean",
           "default": true,
           "description": "When set to false, the email format and DNS MX record are not checked."
+        },
+        "emailDelaySeconds": {
+          "type": "integer",
+          "default": 300,
+          "description": "Time to wait before sending a device connection/disconnection notification email. If many events occur, they will be merged into a single email."
         }
       },
       "required": [
@@ -3588,6 +4084,36 @@
         "from",
         "tls"
       ]
+    },
+    "sendmail": {
+      "title": "Send email using the sendmail command",
+      "description": "Makes MeshCentral send emails using the Unix sendmail command. Allows MeshCentral to send email messages for 2FA or user notification.",
+      "type": "object",
+      "properties": {
+        "newline": {
+          "type": "string",
+          "default": "unix",
+          "description": "Possible values are unix or windows"
+        },
+        "path": {
+          "type": "string",
+          "default": "sendmail",
+          "description": "Path to the sendmail command"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": null,
+          "description": "Array or arguments to pass to sendmail"
+        },
+        "emailDelaySeconds": {
+          "type": "integer",
+          "default": 300,
+          "description": "Time to wait before sending a device connection/disconnection notification email. If many events occur, they will be merged into a single email."
+        }
+      }
     },
     "sms": {
       "title": "SMS provider",
@@ -3598,18 +4124,22 @@
           "properties": {
             "provider": {
               "type": "string",
+              "description": "The SMS provider to use",
               "enum": [
                 "twilio"
               ]
             },
             "sid": {
-              "type": "string"
+              "type": "string",
+              "description": "Twilio SID"
             },
             "auth": {
-              "type": "string"
+              "type": "string", 
+              "description": "Twilio Auth Token"
             },
             "from": {
-              "type": "string"
+              "type": "string",
+              "description": "Twilio phone number to send from"
             }
           },
           "required": [
@@ -3623,19 +4153,23 @@
           "type": "object",
           "properties": {
             "provider": {
+              "description": "The SMS provider to use",
               "type": "string",
               "enum": [
                 "plivo"
               ]
             },
             "id": {
-              "type": "string"
+              "type": "string",
+              "description": "Plivo ID"
             },
             "token": {
-              "type": "string"
+              "type": "string",
+              "description": "Plivo Auth Token"
             },
             "from": {
-              "type": "string"
+              "type": "string",
+              "description": "Plivo phone number to send from"
             }
           },
           "required": [
@@ -3650,15 +4184,18 @@
           "properties": {
             "provider": {
               "type": "string",
+              "description": "The SMS provider to use",
               "enum": [
                 "telnyx"
               ]
             },
             "apikey": {
-              "type": "string"
+              "type": "string",
+              "description": "Telnyx API Key"
             },
             "from": {
-              "type": "string"
+              "type": "string",
+              "description": "Telnyx phone number to send from"
             }
           },
           "required": [
@@ -3672,6 +4209,7 @@
           "properties": {
             "provider": {
               "type": "string",
+              "description": "The SMS provider to use",
               "enum": [
                 "url"
               ]
@@ -3697,13 +4235,16 @@
           "description": "Configure Telegram messaging system",
           "properties": {
             "apiid": {
-              "type": "number"
+              "type": "number",
+              "description": "Telegram API ID"
             },
             "apihash": {
-              "type": "string"
+              "type": "string",
+              "description": "Telegram API Hash"
             },
             "session": {
-              "type": "string"
+              "type": "string",
+              "description": "Path to the Telegram session file"
             },
             "useWSS": {
               "type": "boolean",
@@ -3746,10 +4287,12 @@
               "description": "Login credentials for the XMPP server.",
               "properties": {
                 "username": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "XMPP username."
                 },
                 "password": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "XMPP password."
                 }
               }
             }

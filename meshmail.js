@@ -116,6 +116,27 @@ module.exports.CreateMeshMail = function (parent, domain) {
             }
         }
 
+        // If no email template found, use the default translated email template
+        if (((htmlfile == null) || (txtfile == null)) && (lang != null) && (lang != 'en')) {
+            var translationsPath = obj.parent.path.join(obj.parent.webEmailsPath, 'translations');
+            var translationsPathHtml = obj.parent.path.join(obj.parent.webEmailsPath, 'translations', name + '_' + lang + '.html');
+            var translationsPathTxt = obj.parent.path.join(obj.parent.webEmailsPath, 'translations', name + '_' + lang + '.txt');
+            if (obj.parent.fs.existsSync(translationsPath) && obj.parent.fs.existsSync(translationsPathHtml) && obj.parent.fs.existsSync(translationsPathTxt)) {
+                htmlfile = obj.parent.fs.readFileSync(translationsPathHtml).toString();
+                txtfile = obj.parent.fs.readFileSync(translationsPathTxt).toString();
+            }
+        }
+
+        // If no translated email template found, use the default email template
+        if ((htmlfile == null) || (txtfile == null)) {
+            var pathHtml = obj.parent.path.join(obj.parent.webEmailsPath, name + '.html');
+            var pathTxt = obj.parent.path.join(obj.parent.webEmailsPath, name + '.txt');
+            if (obj.parent.fs.existsSync(pathHtml) && obj.parent.fs.existsSync(pathTxt)) {
+                htmlfile = obj.parent.fs.readFileSync(pathHtml).toString();
+                txtfile = obj.parent.fs.readFileSync(pathTxt).toString();
+            }
+        }
+
         // No email templates
         if ((htmlfile == null) || (txtfile == null)) { return null; }
 
@@ -346,7 +367,7 @@ module.exports.CreateMeshMail = function (parent, domain) {
                 }
 
                 // Set all the template replacement options and generate the final email text (both in txt and html formats).
-                var options = { username: username, name: name, email: email, installflags: flags, msg: msg, meshid: meshid, meshidhex: meshid.split('/')[2], servername: domain.title ? domain.title : 'MeshCentral' };
+                var options = { username: username, name: name, email: email, installflags: flags, msg: msg, meshid: meshid, meshidhex: meshid.split('/')[2], servername: domain.title ? domain.title : 'MeshCentral', assistanttype: (domain.assistanttypeagentinvite ? domain.assistanttypeagentinvite : 0)};
                 if (loginkey != null) { options.urlargs1 = '?key=' + loginkey; options.urlargs2 = '&key=' + loginkey; } else { options.urlargs1 = ''; options.urlargs2 = ''; }
                 options.windows = ((os == 0) || (os == 1)) ? 1 : 0;
                 options.linux = ((os == 0) || (os == 2)) ? 1 : 0;
